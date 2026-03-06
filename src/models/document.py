@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class DocumentType(str, Enum):
     BAFIN = "bafin"
     EU_AI_ACT = "eu_ai_act"
-    DSVGO = "dsvgo"
+    DSGVO = "dsgvo"
     BUNDESBANK = "bundesbank"
     OTHER = "other"
 
@@ -30,3 +30,14 @@ class Document(BaseModel):
     def is_regulatory(self) -> bool:
         return self.doc_type != DocumentType.OTHER
     
+    def to_dict(self) -> dict:
+        return self.model_dump()
+        
+    @classmethod
+    def create_document_from_url(cls, url :str, title:str, doc_type :DocumentType) -> "Document":
+        return cls(id = url, 
+                   title = title,
+                   content = "",
+                doc_type = doc_type,
+                source_url = url ,
+                )
