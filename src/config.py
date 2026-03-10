@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     langfuse_public_key: str = Field(default= "", description= "Langfuse Public Key")
     langfuse_secret_key: str = Field(default="", description= "Langfuse Secret Key")
 
-    
+    # API key
+    api_key: str = Field(default="dev-secret-key", description="API key for endpoint authentication")
 
 def get_settings() -> Settings:
     """ Factory function(creates an Object and returns it) to isolate settings for different environments """
