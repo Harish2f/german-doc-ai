@@ -3,7 +3,7 @@ from pydantic import Field
 
 class Settings(BaseSettings):
     """
-    Central configuration for GermanDocAI loaded from environment variables and .env file.
+    Central configuration for GermanDocAI loaded from environment variables in .env file.
 
     All secrets (API keys, passwords) default to empty string locally and are
     populated from Azure application settings in production.

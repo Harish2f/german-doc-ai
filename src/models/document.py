@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -36,7 +36,7 @@ class Document(BaseModel):
     doc_type: DocumentType
     source_url: str = ""
     page_count: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def word_count(self) -> int:
         """Return the number of words in the document content."""
