@@ -5,7 +5,7 @@ def test_create_document(client,auth_headers):
     response = client.post(
         "/documents",
         json={
-            'id':"test_001",
+            'id':"test_003",
             "title":"Test Document",
             "content":"Test content for BaFin compliance",
             "doc_type":"bafin",
@@ -15,7 +15,7 @@ def test_create_document(client,auth_headers):
         headers=auth_headers,
     )
     assert response.status_code == 201
-    assert response.json()["id"]=="test_001"
+    assert response.json()["id"]=="test_003"
     assert response.json()['doc_type']=='bafin'
 
 

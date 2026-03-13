@@ -1,5 +1,4 @@
 name: Tests
-
 on:
   push:
     branches: [ main ]
@@ -9,6 +8,35 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: germandocai
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: localdevpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      opensearch:
+        image: opensearchproject/opensearch:2.11.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -24,4 +52,23 @@ jobs:
         run: uv sync
 
       - name: Run tests
+        env:
+          APP_NAME: GermanDocAI
+          APP_VERSION: 0.1.0
+          ENVIRONMENT: development
+          DEBUG: "false"
+          API_KEY: dev-secret-key
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: germandocai
+          POSTGRES_USERNAME: postgres
+          POSTGRES_PASSWORD: localdevpassword
+          OPENSEARCH_HOST: localhost
+          OPENSEARCH_PORT: 9200
+          OPENSEARCH_INDEX: german-docs
+          AZURE_OPENAI_API_KEY: ""
+          AZURE_OPENAI_ENDPOINT: ""
+          AZURE_OPENAI_DEPLOYMENT: gpt-4o
+          LANGFUSE_PUBLIC_KEY: ""
+          LANGFUSE_SECRET_KEY: ""
         run: uv run pytest tests/ -v
