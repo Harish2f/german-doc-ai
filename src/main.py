@@ -6,6 +6,8 @@ from src.config import get_settings
 from src.logger import setup_logging, get_logger
 from src.routers import health, documents
 from src.dependencies import get_request_id
+from src.db.postgres import init_db
+from src.db.opensearch import init_opensearch
 
 setup_logging()
 logger = get_logger(__name__)
@@ -23,6 +25,8 @@ async def lifespan(app: FastAPI):
         environment= settings.environment,
         version=settings.app_version,
     )
+    await init_db()
+    await init_opensearch()
     yield
     logger.info("germandocai_stopping")
 
