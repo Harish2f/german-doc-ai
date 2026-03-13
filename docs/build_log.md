@@ -1,6 +1,6 @@
 # GermanDocAI Build Log
 
-## Week 1 — Project Setup
+## Project Setup
 
 ### What I built
 - Project structure: src/, tests/, docs/, scripts/
@@ -19,7 +19,7 @@
 - Pydantic requires colon syntax for field definitions, not equals
 - default_factory vs default: use default_factory for anything that should be called fresh each time
 
-## Week 2 — Pydantic Settings, Structured Logging, Async/Await
+## Pydantic Settings, Structured Logging, Async/Await
 
 
 ### What I built
@@ -45,7 +45,7 @@
 ### What I would do differently
 - I would test each function in the Python shell immediately after writing it instead of writing everything and running pytest at the end  would have caught the annotation errors faster.
 
-## Week 3 - FastAPI Endpoints with Auth, logging and tests
+## FastAPI Endpoints with Auth, logging and tests
 
 ### What I built
 - Custom API endpoints for document module and health module.
@@ -68,3 +68,25 @@
 
 ### What I would do differently
 - Realized i wrote json definitions manually for each tests, I would use pytest fixtures to define test documents once and reuse them. 
+
+## DB, OpenSearch & Docker compose
+
+### What I built
+- Built docker file with Postgres and OpenSearch services with healthchecks.
+- Defined volumes for persistent storage outside containers.
+- Established postgreSQL and OpenSearch connection and tested async request handling in Swagger and added as services in the github workflows.
+- Refactored existing codebase with db instance from in memory dictionary.
+- Isolated tests to run on SQLite in in-memory instead of running in Postgres. Same 28 tests now also testing db connection and Opensearch. 
+
+### What I learnt
+- Got better understanding on container volumes and persistent memory management.
+-  PostgreSQL Docker image on Apple Silicon has a known bug where POSTGRES_USER is ignored when it is not 'postgres'. Debugged by inspecting container logs and checking actual roles with psql.
+- In SQLAlchemy, DATETIME function should have timezone=True to enable timezone parsing.
+
+### What broke and how I fixed it
+- I was passing DATETIME function in SQLAlchemy without timezone and comparing with created_at timestamp and fixed it later by setting timezone=True.
+- Had problem establishing ROLE in Postgres with SQLAlchemy because of having a different user_name, it's a known bug in Apple Silicon and fixed it with the username: postgres.
+- After establishing db, tests failed because of duplicate id's in the database, so I isolated tests to run on SQLite instead of Postgres db in production and established async SQLite session in conftest.
+
+### What I would do differently
+- Not technical, but forgot to document and build logs. Next time, i will make sure i also build the logs before I push the code.

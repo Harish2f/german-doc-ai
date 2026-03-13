@@ -12,6 +12,7 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
+test.db
 
 # Environment variables - NEVER commit these
 .env
