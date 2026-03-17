@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # API key
     api_key: str = Field(default="dev-secret-key", description="API key for endpoint authentication")
 
+    # JINA API
+    jina_api_key:str= Field(default="", description="JINA Embeddings API Key")
+
 def get_settings() -> Settings:
     """ Factory function(creates an Object and returns it) to isolate settings for different environments """
     return Settings()
