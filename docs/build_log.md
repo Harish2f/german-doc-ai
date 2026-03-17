@@ -90,3 +90,25 @@
 
 ### What I would do differently
 - Not technical, but forgot to document and build logs. Next time, i will make sure i also build the logs before I push the code.
+
+## Docling Parser and Hybrid search with OpenSearch
+
+### What I built
+- Built ingestion pipelines for docling parser, embedder and chunker with sliding window overlap.
+- Built endpoints for data ingestion and ask query. 
+- Build hybrid search with BM25 and Knn semantic search combined with Reciprocal Rank Fusion to reward the chunks with low semantic differences.
+- Built mockers for tests to avoid real API calls or Db compute.
+
+### What I learnt
+- learnt mocking is defined on where the functions are used, not where they are defined. This helps to mock the entire function we want to mock.
+- Reciprocal Rank Fusion rewards chunks that appear high in both BM25 keyword search and KNN semantic search — consensus between both methods produces the highest combined score.
+- Though, Docling is good at handling and parsing PDF's, it by defaults rejects PDF's during ingestion directly from the URL and the file format has to be defined individually.
+
+### What broke and How I fixed it
+- Made a typo in reciprocal rank fusion function, defined it as 'rrf_score' but calling it as 'rff_score', understood the issue from error message and fixed it.
+- Defined ingestion endpoints with '/ingestion' and tried calling it as '/ingest', throwing error and fixed it by referencing '/ingestion'
+- Docling detects file format from URL extension - URLs without .pdf extension are rejected by default. Fixed by explicitly configuring InputFormat.PDF and PdfFormatOption in the converter.
+
+### What I would do differently
+- may be maintain a list of variables created to maintain and reference easily without dwelling through whole codebase.
+- Try to write the result of Each API request to a custom table for better auditability.

@@ -32,7 +32,7 @@ INDEX_MAPPING={
 
 
 def get_opensearch_client() -> OpenSearch:
-    """Create synchronous OpenSearch clinet
+    """Create synchronous OpenSearch client
     
     Used for index setup and admin operations at startup.
     For Request-time operations use get_async_OpenSearch_client().
