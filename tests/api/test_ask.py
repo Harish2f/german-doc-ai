@@ -36,7 +36,7 @@ def mock_generate_answer(mocker):
     )
 
 
-def test_ask(client,auth_headers,mock_hybrid_search):
+def test_ask(client,auth_headers,mock_hybrid_search,mock_generate_answer):
     response = client.post(
         "/ask/",
         json={
@@ -61,7 +61,7 @@ def test_ask_no_auth(client,mock_hybrid_search):
     assert response.status_code == 401
 
 
-def test_ask_returns_correct_fields(client,auth_headers,mock_hybrid_search):
+def test_ask_returns_correct_fields(client,auth_headers,mock_hybrid_search,mock_generate_answer):
     response = client.post(
         "/ask/",
         json = {
