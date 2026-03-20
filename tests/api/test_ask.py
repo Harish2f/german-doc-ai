@@ -22,6 +22,19 @@ def mock_hybrid_search(mocker):
         return_value = SAMPLE_SEARCH_RESULTS,
         )
 
+@pytest.fixture
+def mock_generate_answer(mocker):
+    return mocker.patch(
+        "src.routers.ask.generate_answer",
+        new_callable=AsyncMock,
+        return_value={
+            "answer": "BaFin requires AI models to be explainable.",
+            "sources": ["doc_test001"],
+            "prompt_tokens": 100,
+            "completion_tokens": 20,
+        }
+    )
+
 
 def test_ask(client,auth_headers,mock_hybrid_search):
     response = client.post(
@@ -61,7 +74,7 @@ def test_ask_returns_correct_fields(client,auth_headers,mock_hybrid_search):
     assert response.json()['query'] == "What are the BaFin requirements for AI models to be explainable?"
     assert isinstance(response.json()['chunks'] ,list)
 
-def test_ask_returns_answer_field(client, auth_headers, mock_hybrid_search, mocker):
+def test_ask_returns_answer_field(client, auth_headers, mock_hybrid_search, mock_generate_answer,mocker):
     mocker.patch(
         "src.routers.ask.generate_answer",
         new_callable=AsyncMock,
@@ -86,7 +99,7 @@ def test_ask_returns_answer_field(client, auth_headers, mock_hybrid_search, mock
     assert response.json()["prompt_tokens"] == 100
 
 
-def test_ask_circuit_breaker_open(client, auth_headers, mock_hybrid_search, mocker):
+def test_ask_circuit_breaker_open(client, auth_headers, mock_hybrid_search, mock_generate_answer,mocker):
     mocker.patch(
         "src.routers.ask.llm_circuit_breaker.can_attempt",
         return_value=False,

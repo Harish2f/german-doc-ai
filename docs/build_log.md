@@ -136,6 +136,7 @@
 - failure_content typo in circuit breaker init — should be failure_count, fixed incorrect attribute name
 - doc_types is False bug in ask endpoint — empty list is not False, fixed with if request.doc_types
 - rl.acquire without parentheses in rate limiter test — function was referenced instead of called, fixed by adding ()
+- mocker was trying to call real Azure OpenAI API, fixed by adding a fixture of generate answer and added the fixture function as a parameter for the tests.
 
 ### What I would do differently
 
