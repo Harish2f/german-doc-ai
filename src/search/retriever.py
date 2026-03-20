@@ -34,7 +34,7 @@ async def hybrid_search(
     )
 
     # generate query embedding with retrieval.query task
-    query_embeddings = await generate_embeddings([query])
+    query_embeddings = await generate_embeddings([query], task="retrieval.query")
     query_vector = query_embeddings[0]
 
     # Build Filter if doc_types is provided

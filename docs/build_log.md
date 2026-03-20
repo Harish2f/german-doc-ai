@@ -98,6 +98,7 @@
 - Built endpoints for data ingestion and ask query. 
 - Build hybrid search with BM25 and Knn semantic search combined with Reciprocal Rank Fusion to reward the chunks with low semantic differences.
 - Built mockers for tests to avoid real API calls or Db compute.
+- 34 tests passing.
 
 ### What I learnt
 - learnt mocking is defined on where the functions are used, not where they are defined. This helps to mock the entire function we want to mock.
@@ -112,3 +113,32 @@
 ### What I would do differently
 - may be maintain a list of variables created to maintain and reference easily without dwelling through whole codebase.
 - Try to write the result of Each API request to a custom table for better auditability.
+
+## RAG Generator, Rate Limiter, Circuit Breaker
+
+### What I built
+- Azure OpenAI integration with GPT-4o, system prompt for regulatory compliance, temperature=0.0 for deterministic answers, token usage tracking
+- sliding window rate limiter using deque, 60 requests per minute, queues excess requests instead of rejecting
+- Three state machine (CLOSED/OPEN/HALF_OPEN), opens after 5 failures, recovers after 60 seconds
+- Now returns real answers from GPT-4o with sources and token counts
+- Tests for all three RAG components — 44 tests passing.
+
+### What I learnt
+- temperature=0.0 ensures deterministic outputs, critical for regulatory compliance
+- Token counting is required for both cost monitoring and rate limit management
+- Circuit breaker states — CLOSED normal, OPEN fail fast, HALF_OPEN probes recovery
+	•	deque vs list — popleft() is O(1) vs O(n), critical for rate limiter performance
+- RAG vs raw LLM — enables use of proprietary data, provides citations, improves cost control
+- Patch where used not where defined — mock src.rag.generator.get_azure_openai_client, not openai client directly
+
+### What broke and how I fixed it
+- DeploymentNotFound — Azure OpenAI deployment takes 5–10 minutes to provision after creation, fixed by waiting for deployment readiness
+- failure_content typo in circuit breaker init — should be failure_count, fixed incorrect attribute name
+- doc_types is False bug in ask endpoint — empty list is not False, fixed with if request.doc_types
+- rl.acquire without parentheses in rate limiter test — function was referenced instead of called, fixed by adding ()
+
+### What I would do differently
+
+- Add token usage thresholds and alerts to proactively control cost spikes
+- Log circuit breaker state transitions for better observability in production
+- Standardize request/response logging for full traceability of RAG pipeline

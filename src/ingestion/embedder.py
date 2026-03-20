@@ -8,7 +8,8 @@ JINA_EMBEDDINGS_URL = "https://api.jina.ai/v1/embeddings"
 JINA_MODEL = "jina-embeddings-v3"
 EMBEDDING_DIMENSION=768
 
-async def generate_embeddings(texts:list[str])-> list[list[float]]:
+async def generate_embeddings(texts:list[str],
+                              task: str= "retrieval.passage")-> list[list[float]]:
     """Generate Embeddings for a list of texts using JINA API.
     
     Args:
