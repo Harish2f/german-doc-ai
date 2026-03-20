@@ -6,10 +6,6 @@ Answers questions about BaFin publications, EU AI Act, and DSGVO
 using hybrid search and an agentic reasoning layer — built with
 DSGVO-compliant architecture and deployed on Azure.
 
-## Status
-
-🚧 Under active development
-
 ## What This Will Do
 
 - Ingest and parse German regulatory PDFs (BaFin, EU AI Act, DSGVO, Bundesbank)

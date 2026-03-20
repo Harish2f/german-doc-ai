@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field
 from src.db.opensearch import get_opensearch
 from src.search.retriever import hybrid_search
 from src.models.document import DocumentType
+from src.rag.generator import generate_answer
+from src.rag.rate_limiter import llm_rate_limiter
+from src.rag.circuit_breaker import llm_circuit_breaker, CircuitState
 from src.dependencies import get_request_id, verify_api_key
 from src.logger import get_logger
 
@@ -15,7 +18,7 @@ class AskRequest(BaseModel):
     query:str = Field(description="Query from the user in German or English")
     doc_types: list[DocumentType] = Field(default_factory=list,
                                           description="Optional Filter by Document Type.")
-    top_K: int = Field(default = 5, description="Number of chunks to retrieve.")
+    top_k: int = Field(default = 5, description="Number of chunks to retrieve.")
 
 
 class ChunkResult(BaseModel):
@@ -31,8 +34,12 @@ class ChunkResult(BaseModel):
 class AskResponse(BaseModel):
     """Response from the Ask Endpoint."""
     query:str
+    answer:str
+    sources: list[str]
     chunks: list[ChunkResult]
     total_chunks: int
+    prompt_tokens: int
+    completion_tokens: int
 
 
 @router.post("/", response_model=AskResponse)
@@ -52,14 +59,14 @@ async def ask(
     structlog.contextvars.bind_contextvars(request_id=request_id)
     logger.info("ask_request_received", query=request.query)
 
-    doc_type_values = [dt.value for dt in request.doc_types] if request.doc_types is False else None
+    doc_type_values = [dt.value for dt in request.doc_types] if request.doc_types else None
 
     try:
         results = await hybrid_search(
             query=request.query,
             client=opensearch,
             doc_types=doc_type_values,
-            top_k=request.top_K,
+            top_k=request.top_k,
         ) 
     except Exception as e:
         logger.error("search_failed", query=request.query, error=str(e))
@@ -77,13 +84,44 @@ async def ask(
         for r in results
     ]
 
+    # check circuit breaker
+    if not llm_circuit_breaker.can_attempt():
+        raise HTTPException(
+            status_code = 503,
+            detail = "AI service temporarily unavailable. Please try again later."
+        )
+    # Apply rate limiting
+    await llm_rate_limiter.acquire()
+
+    # Generate answer with Azure OpenAI
+    try:
+        llm_response = await generate_answer(
+            query=request.query,
+            chunks=results,
+        )
+        llm_circuit_breaker.call_succeeded()
+    except Exception as e:
+        llm_circuit_breaker.call_failed()
+        logger.error("llm_call_failed", query=request.query, error = str(e))
+        raise HTTPException(
+            status_code=503,
+            detail=f"Failed to generate answer: {str(e)}"
+        )
+
     logger.info(
         "ask_request_completed",
         query=request.query,
         chunks_returned=len(chunks),
+        prompt_tokens=llm_response["prompt_tokens"],
+        completion_tokens=llm_response["completion_tokens"],
     )
+
     return AskResponse(
         query=request.query,
+        answer=llm_response["answer"],
+        sources=llm_response["sources"],
         chunks= chunks,
         total_chunks=len(chunks),
+        prompt_tokens = llm_response["prompt_tokens"],
+        completion_tokens=llm_response["completion_tokens"],
     )
