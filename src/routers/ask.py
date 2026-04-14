@@ -8,6 +8,7 @@ from src.rag.generator import generate_answer
 from src.rag.rate_limiter import llm_rate_limiter
 from src.rag.circuit_breaker import llm_circuit_breaker, CircuitState
 from src.dependencies import get_request_id, verify_api_key
+from src.agent.graph import run_agent
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,6 +41,16 @@ class AskResponse(BaseModel):
     total_chunks: int
     prompt_tokens: int
     completion_tokens: int
+
+
+class AgentResponse(BaseModel):
+    """Response from the agent endpoint."""
+    query: str
+    answer: str
+    chunks: list[ChunkResult]
+    rewrite_count: int
+    rewritten_query: str
+
 
 
 @router.post("/", response_model=AskResponse)
@@ -124,4 +135,71 @@ async def ask(
         total_chunks=len(chunks),
         prompt_tokens = llm_response["prompt_tokens"],
         completion_tokens=llm_response["completion_tokens"],
+    )
+
+@router.post("/agent", response_model=AgentResponse)
+async def ask_agent(
+    request: AskRequest,
+    api_key: str = Depends(verify_api_key),
+    opensearch=Depends(get_opensearch),
+) -> AgentResponse:
+    """Answer a query using the LangGraph RAG agent.
+    
+    Unlike the basic ask endpoint, the agent can:
+    - Detect out-of-scope queries
+    - Grade retrieved documents for relevance
+    - Rewrite queries for better retrieval
+    - Run multiple retrieval rounds if needed
+    
+    Requires X-Api-Key header.
+    """
+    request_id = get_request_id()
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    logger.info("agent_request_received", query=request.query)
+
+    doc_type_values = [dt.value for dt in request.doc_types] if request.doc_types else None
+
+    # Check circuit breaker
+    if not llm_circuit_breaker.can_attempt():
+        raise HTTPException(
+            status_code=503,
+            detail="AI service temporarily unavailable. Please try again later."
+        )
+
+    # Apply rate limiting
+    await llm_rate_limiter.acquire()
+
+    try:
+        result = await run_agent(
+            query=request.query,
+            opensearch_client=opensearch,
+            doc_types=doc_type_values,
+        )
+        llm_circuit_breaker.call_succeeded()
+    except Exception as e:
+        llm_circuit_breaker.call_failed()
+        logger.error("agent_failed", query=request.query, error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail=f"Agent failed: {str(e)}"
+        )
+
+    chunks = [
+        ChunkResult(
+            text=r["text"],
+            doc_id=r["doc_id"],
+            doc_type=r["doc_type"],
+            source_url=r["source_url"],
+            chunk_index=r["chunk_index"],
+            rrf_score=r["rrf_score"],
+        )
+        for r in result["chunks"]
+    ]
+
+    return AgentResponse(
+        query=request.query,
+        answer=result["answer"],
+        chunks=chunks,
+        rewrite_count=result["rewrite_count"],
+        rewritten_query=result["rewritten_query"],
     )
