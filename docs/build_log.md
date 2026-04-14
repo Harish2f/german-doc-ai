@@ -143,3 +143,31 @@
 - Add token usage thresholds and alerts to proactively control cost spikes
 - Log circuit breaker state transitions for better observability in production
 - Standardize request/response logging for full traceability of RAG pipeline
+
+## LangGraph Agent layer
+
+### What I built
+- Implemented a LangGraph-based RAG agent with a StateGraph controlling retrieval, grading, rewriting, and generation steps.
+- Designed a shared agent state (TypedDict) to pass query, retrieved chunks, rewrite count, and generation results across nodes.
+- Implemented agent nodes for retrieval (hybrid_search), document grading (LLM), query rewriting (LLM), and answer generation.
+- Built conditional routing logic (grade_query, should_rewrite) to control out-of-scope detection and retrieval retry loops.
+- Created an agent execution wrapper (run_agent) to initialise state and run the graph asynchronously.
+- Added a FastAPI /agent endpoint integrating circuit breaker, rate limiting, and OpenSearch dependency injection.
+
+### What I Learned
+- How LangGraph StateGraph works: nodes perform operations while edges define control flow.
+- The difference between graph nodes (operations) and conditional edges (decision routing).
+- Using functools.partial() for dependency injection when graph nodes require external services (OpenSearch).
+- Benefits of TypedDict for agent state management and predictable state merging across nodes.
+- Implementing simple query classification using keyword matching (grade_query).
+- Preventing infinite loops in agent workflows using a maximum rewrite limit (should_rewrite)
+
+### What broke and how I fixed it
+- Homebrew PostgreSQL conflict caused port/service issues → resolved by stopping the system instance and restarting the Homebrew-managed service.
+- Incorrect test patching target (src.agent.nodes.generate_answer) → fixed by patching the correct import path src.rag.generator.generate_answer.
+
+### What I would do differently
+- 	Improve document grading output to include confidence scores and reasoning instead of a binary flag.
+- Add observability and tracing (LangSmith or structured metrics) for node execution and token usage.
+- add Cache query rewrites to reduce repeated LLM calls for similar queries.
+- Persist agent run metadata (query, rewrites, retrieved chunks, answer) for evaluation and debugging
