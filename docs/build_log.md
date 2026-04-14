@@ -164,7 +164,8 @@
 
 ### What broke and how I fixed it
 - Homebrew PostgreSQL conflict caused port/service issues → resolved by stopping the system instance and restarting the Homebrew-managed service.
-- Incorrect test patching target (src.agent.nodes.generate_answer) → fixed by patching the correct import path src.rag.generator.generate_answer.
+- Incorrect test patching target (src.agent.nodes.generate_answer) - fixed by patching the correct import path src.rag.generator.generate_answer.
+- Incorrect test patching target (src.agent.nodes.grade_documents) - fixed by directly mocking Azure client inside grade documents mocker
 
 ### What I would do differently
 - 	Improve document grading output to include confidence scores and reasoning instead of a binary flag.

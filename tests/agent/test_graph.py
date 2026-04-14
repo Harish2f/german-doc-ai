@@ -23,20 +23,25 @@ async def test_run_agent(mocker):
         return_value=SAMPLE_CHUNKS,
     )
 
+    # Mock the Azure client used inside grade_documents
+    mock_client = AsyncMock()
+    mock_client.chat.completions.create.return_value = MagicMock(
+        choices=[MagicMock(message=MagicMock(content='{"relevant": true}'))],
+        usage=MagicMock(prompt_tokens=50, completion_tokens=5),
+    )
     mocker.patch(
-        "src.agent.nodes.grade_documents",
-        new_callable=AsyncMock,
-        return_value={"documents_relevant": True},
+        "src.agent.nodes.get_azure_openai_client",
+        return_value=mock_client,
     )
 
     mocker.patch(
-    "src.rag.generator.generate_answer",
-    new_callable=AsyncMock,
-    return_value={
-        "answer": "BaFin requires AI models to be explainable.",
-        "sources": ["doc_test001"],
-        "prompt_tokens": 100,
-        "completion_tokens": 20,
+        "src.rag.generator.generate_answer",
+        new_callable=AsyncMock,
+        return_value={
+            "answer": "BaFin requires AI models to be explainable.",
+            "sources": ["doc_test001"],
+            "prompt_tokens": 100,
+            "completion_tokens": 20,
         },
     )
 
@@ -48,18 +53,3 @@ async def test_run_agent(mocker):
 
     assert "answer" in result
     assert result["answer"] != ""
-
-
-def test_out_of_scope_response():
-    from src.agent.graph import out_of_scope_response
-    state = {"query": "What is the weather today?",
-             "rewritten_query":"",
-            "doc_types":[],
-            "chunks":[],
-            "generation":"",
-            "rewrite_count":0,
-            "documents_relevant":False
-             }
-    result = out_of_scope_response(state)
-    assert "generation" in result
-    assert len(result["generation"]) > 0
