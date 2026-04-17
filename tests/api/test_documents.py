@@ -52,7 +52,6 @@ def test_get_document(client,auth_headers):
         json={
             "id": "test_get_001",
             "title": "Get Test",
-            "content": "Content for retrieval test.",
             "doc_type": "eu_ai_act",
             "source_url": "https://eu.europa.eu/test.pdf",
             "page_count": 5,

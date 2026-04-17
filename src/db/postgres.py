@@ -23,7 +23,6 @@ class DocumentRecord(Base):
 
     id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
-    content = Column(Text, nullable=False)
     doc_type = Column(String, nullable=False)
     source_url = Column(String, default="")
     page_count = Column(Integer, default=0)

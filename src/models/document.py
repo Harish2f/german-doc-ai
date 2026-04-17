@@ -11,6 +11,7 @@ class DocumentType(str, Enum):
     BAFIN = "bafin"
     EU_AI_ACT = "eu_ai_act"
     DSGVO = "dsgvo"
+    GDPR = "gdpr"
     BUNDESBANK = "bundesbank"
     OTHER = "other"
 
@@ -32,7 +33,7 @@ class Document(BaseModel):
     """
     id: str
     title:str
-    content: str
+    content: str = ""
     doc_type: DocumentType
     source_url: str = ""
     page_count: int = 0

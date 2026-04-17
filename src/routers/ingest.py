@@ -88,6 +88,8 @@ async def ingest_document(
                 "doc_type": chunk.doc_type,
                 "source_url":chunk.source_url,
                 "embedding":embedding,
+                "page_number":chunk.page_number,
+                "section_reference":chunk.section_reference,
             }
         )
 
@@ -95,7 +97,6 @@ async def ingest_document(
     record = DocumentRecord(
         id=doc_id,
         title=request.title,
-        content=parsed.content,
         doc_type=request.doc_type.value,
         source_url= request.url,
         page_count = parsed.page_count,
