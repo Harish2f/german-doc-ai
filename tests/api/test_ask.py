@@ -9,6 +9,8 @@ SAMPLE_SEARCH_RESULTS = [
         "doc_type": "bafin",
         "source_url": "https://bafin.de/test.pdf",
         "rrf_score": 0.031,
+        "page_number": 0,
+        "section_reference": "",
     }
 ]
 

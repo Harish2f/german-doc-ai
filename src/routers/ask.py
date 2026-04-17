@@ -30,6 +30,8 @@ class ChunkResult(BaseModel):
     source_url: str
     chunk_index: int
     rrf_score: float
+    page_number: int
+    section_reference: str
 
 
 class AskResponse(BaseModel):
@@ -91,6 +93,8 @@ async def ask(
             source_url = r["source_url"],
             chunk_index = r["chunk_index"],
             rrf_score = r["rrf_score"],
+            page_number = r["page_number"],
+            section_reference = r["section_reference"],
         )
         for r in results
     ]
@@ -192,6 +196,8 @@ async def ask_agent(
             source_url=r["source_url"],
             chunk_index=r["chunk_index"],
             rrf_score=r["rrf_score"],
+            page_number=r["page_number"],
+            section_reference=r["section_reference"]
         )
         for r in result["chunks"]
     ]

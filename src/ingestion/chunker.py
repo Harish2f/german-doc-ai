@@ -22,6 +22,8 @@ class Chunk:
     chunk_index: int
     doc_type: str
     source_url : str
+    page_number: int = 0
+    section_reference: str = ""
 
 
 def chunk_text(
@@ -29,6 +31,8 @@ def chunk_text(
         doc_id: str,
         doc_type: str,
         source_url: str,
+        page_number: int = 0,
+        section_reference: str = "",
         chunk_size: int=CHUNK_SIZE,
         overlap: int = CHUNK_OVERLAP,
 )->list[Chunk]:

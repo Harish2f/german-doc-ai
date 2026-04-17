@@ -12,6 +12,8 @@ INDEX_MAPPING={
         "properties": {
             "doc_id":{"type":"keyword"},
             "text":{"type": "text", "analyzer": "standard"},
+            "page_number": {"type": "integer"},
+            "section_reference": {"type": "keyword"},
             "chunk_index": {"type":"integer"},
             "doc_type":{"type":"keyword"},
             "source_url":{"type":"keyword"},
