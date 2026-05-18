@@ -9,6 +9,7 @@ from src.dependencies import get_request_id
 from src.db.postgres import init_db
 from src.db.opensearch import init_opensearch
 from src.routers import ask
+from src.routers import health, documents, ingest, ask, compliance
 
 setup_logging()
 logger = get_logger(__name__)
@@ -78,3 +79,4 @@ app.include_router(health.router, tags=["health"])
 app.include_router(documents.router)
 app.include_router(ingest.router)
 app.include_router(ask.router)
+app.include_router(compliance.router)

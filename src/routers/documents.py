@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from src.models.document import Document, DocumentType
-from src.db.postgres import get_db, DocumentRecord
+from src.db.postgres import get_db
+from src.db.models import DocumentRecord
 from src.logger import get_logger
 from src.dependencies import verify_api_key, get_request_id
 import structlog

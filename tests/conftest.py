@@ -4,8 +4,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from src.main import app
-from src.db.postgres import Base, get_db
+from src.db.postgres import get_db
+from src.db.models import Base
 from src.dependencies import verify_api_key
+
 
 VALID_API_KEY= "dev-secret-key"
 HEADERS = {"x-api-key":VALID_API_KEY}
@@ -66,3 +68,11 @@ def client():
 def auth_headers():
     """Valid API key Headers available to all tests"""
     return HEADERS
+
+
+@pytest_asyncio.fixture
+async def db_session():
+    """Direct async database session for unit testing services."""
+    async with TestingSessionLocal() as session:
+        yield session
+        await session.rollback()

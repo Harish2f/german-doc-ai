@@ -172,3 +172,33 @@
 - Add observability and tracing (LangSmith or structured metrics) for node execution and token usage.
 - add Cache query rewrites to reduce repeated LLM calls for similar queries.
 - Persist agent run metadata (query, rewrites, retrieved chunks, answer) for evaluation and debugging
+
+## DSGVO Compliance layer
+
+### What I built
+- Built a DSGVO compliance module split into audit logging, chat history management, and full user data erasure across systems.
+- Implemented async repositories + services for PostgreSQL entities (AuditLog, ChatSession, ChatMessage, DocumentRecord).
+- Added end-to-end erasure workflow coordinating OpenSearch deletion first, then relational DB cleanup with verification checks.
+- Designed chat persistence layer supporting sessions, message turns, and LLM-ready history formatting.
+- Added structured logging and async pytest coverage for all compliance flows including edge cases and failure scenarios.
+
+### What I Learned
+- How to structure compliance systems cleanly using repository-service separation for maintainability and auditability.
+- Why deletion order matters in distributed systems (OpenSearch vs PostgreSQL consistency risks).
+- How to safely design “right-to-erasure” flows with verification steps before final commit.
+- Practical async SQLAlchemy behavior in real workflows (flush vs commit, delete semantics).
+- How to design chat history formats that are directly compatible with LLM APIs without transformation overhead.
+
+### What broke and how I fixed it
+- Async pytest fixtures were not recognized by default → fixed by switching to pytest_asyncio.fixture and enabling async mode.
+- Delete operations in tests initially appeared inconsistent due to missing commits → fixed by explicitly committing/rolling back in test flow.
+- OpenSearch dependency in erasure service made unit testing fragile → solved by mocking async client with AsyncMock.
+- Ordering issues in chat message retrieval → ensured explicit ORDER BY created_at for deterministic tests.
+- Session handling edge cases (missing/invalid session_id) → handled via fallback logic in get_or_create_session.
+
+### What I would do differently
+- Introduce transaction boundary abstraction so tests don’t need manual commit/rollback handling.
+- Add stronger integration tests with a real OpenSearch test container instead of full mocking.
+- Centralize test fixtures for DB state builders to reduce repetitive setup across compliance tests.
+- Add structured schemas (Pydantic) for service inputs to avoid implicit dict contracts.
+- Extend erasure flow with observability hooks (metrics + tracing) to verify DSGVO compliance in production runs.
