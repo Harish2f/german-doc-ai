@@ -10,17 +10,14 @@ from src.rag.circuit_breaker import llm_circuit_breaker, CircuitState
 from src.dependencies import get_request_id, verify_api_key
 from src.agent.graph import run_agent
 from src.logger import get_logger
+from src.compliance.audit import audit_service
+from src.compliance.chat import chat_service
+from src.db.postgres import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.config import get_settings
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/ask", tags=["search"])
-
-class AskRequest(BaseModel):
-    """Request body for the Ask Endpoint."""
-    query:str = Field(description="Query from the user in German or English")
-    doc_types: list[DocumentType] = Field(default_factory=list,
-                                          description="Optional Filter by Document Type.")
-    top_k: int = Field(default = 5, description="Number of chunks to retrieve.")
-
 
 class ChunkResult(BaseModel):
     """A single retrieved chunk from with metadata."""
@@ -53,6 +50,13 @@ class AgentResponse(BaseModel):
     rewrite_count: int
     rewritten_query: str
 
+class AskRequest(BaseModel):
+    """Request body for the Ask Endpoint."""
+    query: str = Field(description="Query from the user in German or English")
+    doc_types: list[DocumentType] = Field(default_factory=list)
+    top_k: int = Field(default=5)
+    user_id: str = Field(default="anonymous", description="User identifier for audit logging")
+    session_id: str | None = Field(default=None, description="Chat session ID for conversation history")
 
 
 @router.post("/", response_model=AskResponse)
@@ -60,6 +64,7 @@ async def ask(
     request: AskRequest,
     api_key: str = Depends(verify_api_key),
     opensearch=Depends(get_opensearch),
+    db: AsyncSession = Depends(get_db),
 )-> AskResponse:
     """Retrieve relevant document chunks for a query.
     
@@ -115,13 +120,47 @@ async def ask(
             chunks=results,
         )
         llm_circuit_breaker.call_succeeded()
+        
     except Exception as e:
         llm_circuit_breaker.call_failed()
         logger.error("llm_call_failed", query=request.query, error = str(e))
         raise HTTPException(
-            status_code=503,
-            detail=f"Failed to generate answer: {str(e)}"
+        status_code=503,
+        detail=f"Failed to generate answer: {str(e)}"
         )
+    # Write audit log
+    try:
+        settings = get_settings()
+        audit_log = await audit_service.log_query(
+            db=db,
+            user_id=request.user_id,
+            query_text=request.query,
+            answer=llm_response["answer"],
+            chunks=results,
+            session_id=request.session_id,
+            model_name=settings.azure_openai_deployment,
+            prompt_tokens=llm_response["prompt_tokens"],
+            completion_tokens=llm_response["completion_tokens"],
+        )
+
+        # Write chat history if session provided
+        if request.session_id or request.user_id != "anonymous":
+            session = await chat_service.get_or_create_session(
+                db=db,
+                user_id=request.user_id,
+                session_id=request.session_id,
+                first_message=request.query,
+            )
+            await chat_service.add_turn(
+                db=db,
+                session_id=session.id,
+                user_message=request.query,
+                assistant_message=llm_response["answer"],
+                query_id=audit_log.id,
+            )
+            
+    except Exception as e:
+        logger.error("audit_write_failed", error=str(e))
 
     logger.info(
         "ask_request_completed",
@@ -146,6 +185,7 @@ async def ask_agent(
     request: AskRequest,
     api_key: str = Depends(verify_api_key),
     opensearch=Depends(get_opensearch),
+    db: AsyncSession = Depends(get_db),
 ) -> AgentResponse:
     """Answer a query using the LangGraph RAG agent.
     
@@ -187,6 +227,38 @@ async def ask_agent(
             status_code=503,
             detail=f"Agent failed: {str(e)}"
         )
+    
+    # Write audit log for agent
+    try:
+        settings = get_settings()
+        audit_log = await audit_service.log_query(
+            db=db,
+            user_id=request.user_id,
+            query_text=request.query,
+            answer=result["answer"],
+            chunks=result["chunks"],
+            rewritten_query=result.get("rewritten_query", ""),
+            session_id=request.session_id,
+            model_name=settings.azure_openai_deployment,
+            prompt_tokens=0,
+            completion_tokens=0,
+        )
+        if request.session_id or request.user_id != "anonymous":
+            session = await chat_service.get_or_create_session(
+                db=db,
+                user_id=request.user_id,
+                session_id=request.session_id,
+                first_message=request.query,
+            )
+            await chat_service.add_turn(
+                db=db,
+                session_id=session.id,
+                user_message=request.query,
+                assistant_message=result["answer"],
+                query_id=audit_log.id,
+            )
+    except Exception as e:
+        logger.error("agent_audit_write_failed", error=str(e))
 
     chunks = [
         ChunkResult(
@@ -209,3 +281,5 @@ async def ask_agent(
         rewrite_count=result["rewrite_count"],
         rewritten_query=result["rewritten_query"],
     )
+
+

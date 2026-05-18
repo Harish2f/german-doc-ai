@@ -3,12 +3,13 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
-from src.db.postgres import get_db, DocumentRecord
 from src.db.opensearch import get_opensearch
 from src.ingestion.docling_parser import parse_document_from_url
 from src.ingestion.chunker import chunk_text
 from src.ingestion.embedder import generate_embeddings
 from src.models.document import DocumentType
+from src.db.postgres import get_db
+from src.db.models import DocumentRecord
 from src.dependencies import verify_api_key, get_request_id
 from src.logger import get_logger
 

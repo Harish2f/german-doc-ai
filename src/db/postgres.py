@@ -1,32 +1,12 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, String, Integer, Text, DateTime
 from datetime import datetime, timezone
+from src.db.models import Base, DocumentRecord
 from src.config import get_settings
 from src.logger import get_logger
 
 logger = get_logger(__name__)
 
-class Base(DeclarativeBase):
-    """Base class for all SQLAlchemy models."""
-    pass
-
-
-class DocumentRecord(Base):
-    """Postgres table for document metadata.
-    
-    Stores structured metadata about each document ingested.
-    Content is stored here for audit purposes - OpenSearch stores chunks for search purposes.
-    """
-    __tablename__ = "documents"
-
-    id = Column(String, primary_key=True)
-    title = Column(String, nullable=False)
-    doc_type = Column(String, nullable=False)
-    source_url = Column(String, default="")
-    page_count = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default= lambda: datetime.now(timezone.utc))
 
 
 def get_engine():

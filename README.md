@@ -3,7 +3,7 @@
 Production RAG system for German regulatory document intelligence.
 
 Answers questions about BaFin publications, EU AI Act, and DSGVO
-using hybrid search and an agentic reasoning layer — built with
+using hybrid search and an agentic reasoning layer built with
 DSGVO compliant architecture and deployed on Azure.
 
 ## What This Does
@@ -11,7 +11,9 @@ DSGVO compliant architecture and deployed on Azure.
 - Ingest and parse German regulatory PDFs (BaFin, EU AI Act, DSGVO, Bundesbank)
 - Hybrid search combining BM25 keyword and semantic similarity
 - LangGraph agent with guardrail, document grading, query rewriting
-- DSGVO compliance layer with audit logging and right-to-erasure
+- DSGVO compliance layer with audit logging on every query
+- Persistent chat history with session management
+- DSGVO Right to erasure with complete user data deletion across PostgreSQL and OpenSearch
 - Deployed on Azure Container Apps (West Europe region)
 
 ## Architecture
@@ -39,8 +41,13 @@ DSGVO compliant architecture and deployed on Azure.
 | POST | /documents/ | Yes | Store a document |
 | GET | /documents/{doc_id} | Yes | Retrieve a document |
 | POST | /ingest/ | Yes | Ingest PDF from URL |
-| POST | /ask/ | Yes | Hybrid search query |
-| POST | /ask/agent | Yes | LangGraph agentic reasoning |
+| POST | /ask/ | Yes | Hybrid search query with audit logging |
+| POST | /ask/agent | Yes | LangGraph agentic reasoning with audit logging |
+| GET | /compliance/audit/{user_id} | Yes | DSGVO audit trail for user |
+| GET | /compliance/sessions/{user_id} | Yes | Chat sessions for user |
+| GET | /compliance/sessions/{session_id}/messages | Yes | Messages in a session |
+| DELETE | /compliance/users/{user_id} | Yes | Erase all user data — DSGVO Article 17 |
+
 
 All protected endpoints require `X-Api-Key` header.
 
@@ -84,12 +91,6 @@ Start the API:
 uv run uvicorn src.main:app --reload
 ```
 
-To notice:
-
-> ⚠️ If you have PostgreSQL installed locally, stop it first:
-
-> brew services stop postgresql@15  # macOS
-
 Swagger UI
 
 > Open http://localhost:8000/docs to explore the API interactively.
@@ -108,48 +109,12 @@ curl -X POST http://localhost:8000/ingest/ \
   -d '{"url": "https://arxiv.org/pdf/2303.08774", "title": "GPT-4 Report", "doc_type": "other"}'
 ```
 
-Expected output schema:
-```bash
-{
-  "doc_id": "string",
-  "title": "string",
-  "page_count": 0,
-  "chunk_count": 0,
-  "message": "string"
-}
-```
-
 Ask a question:
 ```bash
 curl -X POST http://localhost:8000/ask/ \
   -H "x-api-key: dev-secret-key" \
   -H "Content-Type: application/json" \
   -d '{"query": "What are the safety evaluations?", "doc_types": [], "top_k": 5}'
-```
-
-Expected output schema:
-```bash
-{
-  "query": "string",
-  "answer": "string",
-  "sources": [
-    "string"
-  ],
-  "chunks": [
-    {
-      "text": "string",
-      "doc_id": "string",
-      "doc_type": "string",
-      "source_url": "string",
-      "chunk_index": 0,
-      "rrf_score": 0
-    }
-  ],
-  "total_chunks": 0,
-  "prompt_tokens": 0,
-  "completion_tokens": 0
-}
-
 ```
 
 Ask using the LangGraph agent (multi-step reasoning):
@@ -160,25 +125,18 @@ curl -X POST http://localhost:8000/ask/agent \
   -d '{"query": "What are BaFin requirements for MiCAR regulation?", "doc_types": ["bafin"], "top_k": 5}'
 ```
 
-Expected Output schema:
+Check audit trail for a user:
 ```bash
-{
-  "query": "string",
-  "answer": "string",
-  "chunks": [
-    {
-      "text": "string",
-      "doc_id": "string",
-      "doc_type": "string",
-      "source_url": "string",
-      "chunk_index": 0,
-      "rrf_score": 0
-    }
-  ],
-  "rewrite_count": 0,
-  "rewritten_query": "string"
-}
+curl -X GET http://localhost:8000/compliance/audit/Harish \
+  -H "x-api-key: dev-secret-key"
 ```
+
+Erase all user data (DSGVO Article 17):
+```bash
+curl -X DELETE http://localhost:8000/compliance/users/Harish \
+  -H "x-api-key: dev-secret-key"
+```
+
 
 The agent automatically grades retrieved documents, rewrites the query if needed, and retries retrieval before generating an answer.
 
