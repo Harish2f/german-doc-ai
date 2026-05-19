@@ -15,6 +15,7 @@ from src.compliance.chat import chat_service
 from src.db.postgres import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
+from src.observability.langfuse_client import get_trace
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/ask", tags=["search"])
@@ -74,6 +75,14 @@ async def ask(
     Requires x_api_key Header. 
     """
     request_id = get_request_id()
+    # Create Langfuse trace
+    trace = get_trace(
+    name="ask_endpoint",
+    user_id=request.user_id,
+    session_id=request.session_id,
+    tags=["ask", "basic"] + [dt for dt in (request.doc_types or [])],
+    metadata={"top_k": request.top_k},
+    )
     structlog.contextvars.bind_contextvars(request_id=request_id)
     logger.info("ask_request_received", query=request.query)
 
@@ -118,6 +127,9 @@ async def ask(
         llm_response = await generate_answer(
             query=request.query,
             chunks=results,
+            trace=trace,
+            user_id=request.user_id,
+            session_id=request.session_id,
         )
         llm_circuit_breaker.call_succeeded()
         
@@ -198,6 +210,13 @@ async def ask_agent(
     Requires X-Api-Key header.
     """
     request_id = get_request_id()
+    # Create Langfuse trace
+    trace = get_trace(
+    name="ask_agent_endpoint",
+    user_id=request.user_id,
+    session_id=request.session_id,
+    tags=["ask", "agent"] + [dt.value for dt in (request.doc_types or [])],
+)
     structlog.contextvars.bind_contextvars(request_id=request_id)
     logger.info("agent_request_received", query=request.query)
 
@@ -218,6 +237,8 @@ async def ask_agent(
             query=request.query,
             opensearch_client=opensearch,
             doc_types=doc_type_values,
+            user_id=request.user_id,
+            session_id=request.session_id,
         )
         llm_circuit_breaker.call_succeeded()
     except Exception as e:
@@ -240,6 +261,7 @@ async def ask_agent(
             rewritten_query=result.get("rewritten_query", ""),
             session_id=request.session_id,
             model_name=settings.azure_openai_deployment,
+            trace=trace,
             prompt_tokens=0,
             completion_tokens=0,
         )

@@ -92,6 +92,8 @@ async def run_agent(
     query: str,
     opensearch_client,
     doc_types: list[str] | None = None,
+    user_id: str = "anonymous",
+    session_id: str | None = None,
 ) -> dict:
     """Run the RAG agent for a given query.
     
@@ -116,6 +118,8 @@ async def run_agent(
         "generation": "",
         "rewrite_count": 0,
         "documents_relevant": False,
+        "user_id": user_id,
+        "session_id": session_id,
     }
 
     logger.info("agent_started", query=query)

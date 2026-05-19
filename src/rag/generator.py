@@ -1,5 +1,7 @@
 from openai import AsyncAzureOpenAI
+from src.observability.langfuse_client import init_langfuse
 from src.config import get_settings
+from langfuse import observe, propagate_attributes
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,9 +32,14 @@ def get_azure_openai_client()-> AsyncAzureOpenAI :
         api_version="2024-02-01",
     )
 
+
+@observe(name="generate_answer")
 async def generate_answer(
         query: str,
         chunks: list[dict],
+        trace=None,
+        user_id: str = "anonymous",
+        session_id: str | None = None,
 ) -> dict:
     """Generate an answer from retrieved chunks using Azure Open AI.
     
@@ -53,33 +60,39 @@ async def generate_answer(
     settings = get_settings()
     client = get_azure_openai_client()
 
-    # Format chnks as context
-    context_parts = []
-    for i, chunk in enumerate(chunks):
-        context_parts.append(
-            f"[Source {i+1}] Document: {chunk['doc_id']}"
+    # Propagate user_id to all child observations
+    with propagate_attributes(
+        user_id=user_id,
+        session_id=session_id or "",
+    ):
 
-            f"(Type: {chunk['doc_type']})\n{chunk['text']}"
-        )
-    context = "\n\n---\n\n".join(context_parts)
+        # Format chnks as context
+        context_parts = []
+        for i, chunk in enumerate(chunks):
+            context_parts.append(
+                f"[Source {i+1}] Document: {chunk['doc_id']}"
 
-    user_message = f"""Context documents:
+                f"(Type: {chunk['doc_type']})\n{chunk['text']}"
+            )
+        context = "\n\n---\n\n".join(context_parts)
+
+        user_message = f"""Context documents:
         
-    {context}
+        {context}
 
-    Question: {query}
+        Question: {query}
 
-    Please answer the question based only on the context documents above."""
+        Please answer the question based only on the context documents above."""
 
-    logger.info(
+        logger.info(
             "generating_answer",
             query=query,
             chunk_count=len(chunks),
             context_length = len(context),
-        )
+            )
 
-    try:
-        response = await client.chat.completions.create(
+        try:
+            response = await client.chat.completions.create(
             model=settings.azure_openai_deployment,
             messages = [
                 {"role":"system", "content":SYSTEM_PROMPT},
@@ -87,26 +100,29 @@ async def generate_answer(
             ],
             temperature =0.0,
             max_tokens=1000,
-        )
+            )
 
-        answer = response.choices[0].message.content
-        usage = response.usage
+            answer = response.choices[0].message.content
+            usage = response.usage
 
-        logger.info(
-            "answer_generated",
-            query=query,
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-        )
+            logger.info(
+                "answer_generated",
+                query=query,
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+            )
 
-        sources = list({chunk['doc_id'] for chunk in chunks})
+            sources = list({chunk['doc_id'] for chunk in chunks})
 
-        return {
-            "answer": answer,
-            "sources":sources,
-            "prompt_tokens":usage.prompt_tokens,
-            "completion_tokens":usage.completion_tokens,
-        }
-    except Exception as e:
-        logger.error("answer_generation_failed", query=query, error=str(e))
-        raise ValueError(f"Failed to generate answer: {str(e)}")
+            return {
+                "answer": answer,
+                "sources":sources,
+                "prompt_tokens":usage.prompt_tokens,
+                "completion_tokens":usage.completion_tokens,
+                "total_tokens":usage.total_tokens,
+            }
+        
+
+        except Exception as e:
+            logger.error("answer_generation_failed", query=query, error=str(e))
+            raise ValueError(f"Failed to generate answer: {str(e)}")

@@ -1,3 +1,6 @@
+from src.observability.langfuse_client import init_langfuse
+init_langfuse() # initialise at startup
+
 import structlog
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -10,6 +13,7 @@ from src.db.postgres import init_db
 from src.db.opensearch import init_opensearch
 from src.routers import ask
 from src.routers import health, documents, ingest, ask, compliance
+
 
 setup_logging()
 logger = get_logger(__name__)
