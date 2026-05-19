@@ -30,7 +30,7 @@ DSGVO compliant architecture and deployed on Azure.
 | Search | OpenSearch (hybrid BM25 + semantic) |
 | Agent | LangGraph |
 | Deployment | Azure Container Apps |
-| Observability | Langfuse (planned) |
+| Observability | Langfuse |
 | Evaluation | RAGAS (planned) |
 
 ## API Endpoints

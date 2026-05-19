@@ -25,3 +25,7 @@ class AgentState(TypedDict):
     generation: str
     rewrite_count: int
     documents_relevant: bool
+    user_id: str
+    session_id: str | None
+    prompt_tokens: int
+    completion_tokens: int

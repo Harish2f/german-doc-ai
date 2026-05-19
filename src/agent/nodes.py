@@ -4,8 +4,10 @@ from src.rag.generator import get_azure_openai_client
 from src.search.retriever import hybrid_search
 from src.logger import get_logger
 from src.config import get_settings
+from langfuse import observe, propagate_attributes
 
 logger = get_logger(__name__)
+
 
 
 async def retrieve(state: AgentState, opensearch_client) -> dict:
@@ -37,6 +39,7 @@ async def retrieve(state: AgentState, opensearch_client) -> dict:
     return {"chunks": chunks}
 
 
+@observe(name="grade_documents")
 async def grade_documents(state: AgentState) -> dict:
     """Grade retrieved chunks for relevance to the query.
     
@@ -85,6 +88,7 @@ Respond with JSON only: {{"relevant": true}} or {{"relevant": false}}"""
     return {"documents_relevant": relevant}
 
 
+@observe(name="rewrite_query")
 async def rewrite_query(state: AgentState) -> dict:
     """Rewrite the query for better retrieval.
     
@@ -124,6 +128,7 @@ async def rewrite_query(state: AgentState) -> dict:
     }
 
 
+@observe(name="generate")
 async def generate(state: AgentState) -> dict:
     """Generate final answer from retrieved chunks.
     
@@ -137,13 +142,23 @@ async def generate(state: AgentState) -> dict:
 
     query = state.get("rewritten_query") or state["query"]
     chunks = state["chunks"]
+    user_id = state.get("user_id", "anonymous")
+    session_id = state.get("session_id")
 
     logger.info("agent_generating", query=query, chunk_count=len(chunks))
 
-    result = await generate_answer(query=query, chunks=chunks)
+    with propagate_attributes(
+        user_id=user_id,
+        session_id=session_id or "",
+    ):
+        result = await generate_answer(query=query, chunks=chunks)
 
     logger.info("agent_generated", prompt_tokens=result["prompt_tokens"])
-    return {"generation": result["answer"]}
+    return {
+        "generation": result["answer"],
+        "prompt_tokens": result["prompt_tokens"],
+        "completion_tokens": result["completion_tokens"],
+        }
 
 
 def grade_query(state: AgentState) -> str:
