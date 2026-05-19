@@ -120,7 +120,9 @@ async def run_agent(
         "documents_relevant": False,
         "user_id": user_id,
         "session_id": session_id,
-    }
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        }
 
     logger.info("agent_started", query=query)
 
@@ -138,4 +140,6 @@ async def run_agent(
         "chunks": result.get("chunks", []),
         "rewrite_count": result.get("rewrite_count", 0),
         "rewritten_query": result.get("rewritten_query", ""),
+        "prompt_tokens": result.get("prompt_tokens", 0),
+        "completion_tokens": result.get("completion_tokens", 0),
     }

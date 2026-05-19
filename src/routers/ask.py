@@ -262,8 +262,8 @@ async def ask_agent(
             session_id=request.session_id,
             model_name=settings.azure_openai_deployment,
             trace=trace,
-            prompt_tokens=0,
-            completion_tokens=0,
+            prompt_tokens=result.get("prompt_tokens", 0),
+            completion_tokens=result.get("completion_tokens", 0),
         )
         if request.session_id or request.user_id != "anonymous":
             session = await chat_service.get_or_create_session(

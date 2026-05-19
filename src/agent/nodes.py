@@ -154,7 +154,11 @@ async def generate(state: AgentState) -> dict:
         result = await generate_answer(query=query, chunks=chunks)
 
     logger.info("agent_generated", prompt_tokens=result["prompt_tokens"])
-    return {"generation": result["answer"]}
+    return {
+        "generation": result["answer"],
+        "prompt_tokens": result["prompt_tokens"],
+        "completion_tokens": result["completion_tokens"],
+        }
 
 
 def grade_query(state: AgentState) -> str:

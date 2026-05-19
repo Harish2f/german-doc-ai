@@ -27,3 +27,5 @@ class AgentState(TypedDict):
     documents_relevant: bool
     user_id: str
     session_id: str | None
+    prompt_tokens: int
+    completion_tokens: int
