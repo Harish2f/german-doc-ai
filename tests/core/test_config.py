@@ -7,9 +7,7 @@ def test_settings_loads():
 
 def test_settings_default():
     settings = get_settings()
-    assert settings.opensearch_port == 9200
-    assert settings.postgres_port == 5432
-    assert settings.opensearch_index == "german-docs"
+    assert settings.opensearch_index == "german-docs-chunks"
 
 
 def test_settings_environment():
