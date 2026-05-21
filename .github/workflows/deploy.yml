@@ -1,12 +1,11 @@
-name: Tests
+name: Build and Deploy
+
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     services:
@@ -38,6 +37,7 @@ jobs:
           --health-timeout 10s
           --health-retries 5
 
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,9 +66,38 @@ jobs:
           OPENSEARCH_HOST: localhost
           OPENSEARCH_PORT: 9200
           OPENSEARCH_INDEX: german-docs-chunks
+          OPENSEARCH_USE_AWS: "false"
+          OPENSEARCH_AWS_REGION: eu-north-1
           AZURE_OPENAI_API_KEY: ""
           AZURE_OPENAI_ENDPOINT: ""
           AZURE_OPENAI_DEPLOYMENT: gpt-4o
+          JINA_API_KEY: ""
           LANGFUSE_PUBLIC_KEY: ""
           LANGFUSE_SECRET_KEY: ""
+          LANGFUSE_HOST: https://cloud.langfuse.com
         run: uv run pytest tests/ -v
+
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: germandocairegistry.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: germandocairegistry.azurecr.io/germandocai:latest
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          acrName: germandocairegistry
+          containerAppName: germandocai
+          resourceGroup: german-doc-ai
+          imageToDeploy: germandocairegistry.azurecr.io/germandocai:latest
+          acrUsername: ${{ secrets.ACR_USERNAME }}
+          acrPassword: ${{ secrets.ACR_PASSWORD }}

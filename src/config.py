@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file = ".env",
         env_file_encoding = "utf-8",
-        case_sensitive = False
+        case_sensitive = False,
+        extra="ignore",
     )
     # App
     app_name : str = "GermanDocAI"
@@ -25,6 +26,9 @@ class Settings(BaseSettings):
     azure_openai_deployment: str = Field(default="gpt-4o", description = "Azure OpenAI deployment name")
 
     # OpenSearch
+    opensearch_use_aws: bool = Field(default=False, description="Use AWS OpenSearch Serverless")
+    opensearch_aws_region: str = Field(default="eu-north-1", description="AWS region for OpenSearch")
+    # for local
     opensearch_host: str = "localhost"
     opensearch_port:int = 9200
     opensearch_index: str = "german-docs"

@@ -22,7 +22,16 @@ def get_engine():
         f"{settings.postgres_password}@{settings.postgres_host}:"
         f"{settings.postgres_port}/{settings.postgres_db}"
     )
-    return create_async_engine(connection_string, echo=settings.debug)
+    # SSL required for cloud PostgreSQL (Neon, Supabase etc.)
+    connect_args = {}
+    if settings.postgres_host != "localhost" and settings.postgres_host != "127.0.0.1":
+        connect_args = {"ssl": "require"}
+    
+    return create_async_engine(
+        connection_string,
+        echo=settings.debug,
+        connect_args=connect_args,
+    )
 
 
 def get_session_factory():

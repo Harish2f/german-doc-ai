@@ -32,7 +32,10 @@ async def lifespan(app: FastAPI):
         version=settings.app_version,
     )
     await init_db()
-    await init_opensearch()
+    try:
+        await init_opensearch()
+    except Exception as e:
+        logger.warning("opensearch_unavailable", error=str(e))
     yield
     logger.info("germandocai_stopping")
 

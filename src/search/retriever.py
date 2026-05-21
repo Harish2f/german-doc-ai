@@ -1,4 +1,5 @@
-from opensearchpy import AsyncOpenSearch
+import asyncio
+from opensearchpy import OpenSearch, AsyncOpenSearch
 from src.ingestion.embedder import generate_embeddings
 from src.logger import get_logger
 
@@ -6,6 +7,17 @@ logger=get_logger(__name__)
 
 INDEX_NAME = "german-docs-chunks"
 TOP_K = 5
+
+async def _run_search(client, index: str, body: dict) -> dict:
+    """Run OpenSearch search supporting both sync and async clients."""
+    if isinstance(client, AsyncOpenSearch):
+        return await client.search(index=index, body=body)
+    else:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: client.search(index=index, body=body)
+        )
 
 async def hybrid_search(
         query: str,
@@ -40,7 +52,7 @@ async def hybrid_search(
     # Build Filter if doc_types is provided
     filter_clause = []
     if doc_types:
-        filter_cause = [{"terms": {"doc_type": doc_types}}]
+        filter_clause = [{"terms": {"doc_type": doc_types}}]
 
     # BM25 Keyword Search
     bm25_query = {
@@ -67,11 +79,11 @@ async def hybrid_search(
         },
     }
 
-    # Run both searches concurrently
-    import asyncio
+    # Run both searches
+    
     bm25_results, knn_results = await asyncio.gather(
-        client.search(index=INDEX_NAME, body=bm25_query),
-        client.search(index=INDEX_NAME, body=knn_query),
+    _run_search(client, INDEX_NAME, bm25_query),
+    _run_search(client, INDEX_NAME, knn_query),
     )
 
     # Reciprocal rank fusion

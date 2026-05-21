@@ -29,3 +29,5 @@ test.db
 # uv
 .uv/
 uv.lock
+
+*.pkg
