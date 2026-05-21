@@ -23,8 +23,8 @@ def get_engine():
         f"{settings.postgres_port}/{settings.postgres_db}"
     )
     # SSL required for cloud PostgreSQL (Neon, Supabase etc.)
-    connect_args = {"ssl": "require"}
-    if settings.environment == "production":
+    connect_args = {}
+    if settings.postgres_host != "localhost" and settings.postgres_host != "127.0.0.1":
         connect_args = {"ssl": "require"}
     
     return create_async_engine(

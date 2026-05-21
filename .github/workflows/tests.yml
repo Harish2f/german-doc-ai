@@ -65,7 +65,7 @@ jobs:
           POSTGRES_PASSWORD: localdevpassword
           OPENSEARCH_HOST: localhost
           OPENSEARCH_PORT: 9200
-          OPENSEARCH_INDEX: german-docs
+          OPENSEARCH_INDEX: german-docs-chunks
           AZURE_OPENAI_API_KEY: ""
           AZURE_OPENAI_ENDPOINT: ""
           AZURE_OPENAI_DEPLOYMENT: gpt-4o

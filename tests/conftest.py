@@ -9,6 +9,8 @@ from src.db.models import Base
 from src.dependencies import verify_api_key
 from src.db.opensearch import get_opensearch
 from unittest.mock import AsyncMock, MagicMock
+from src.db import postgres as postgres_module
+
 
 
 VALID_API_KEY= "dev-secret-key"
@@ -61,9 +63,16 @@ async def _reset_db():
 def client():
     """FastAPI Test client with database override."""
     app.dependency_overrides[get_db] = override_get_db
+    
+    # Patch get_engine to return test SQLite engine
+    original_get_engine = postgres_module.get_engine
+    postgres_module.get_engine = lambda: test_engine
+    
     with TestClient(app) as c:
         yield c
+    
     app.dependency_overrides.clear()
+    postgres_module.get_engine = original_get_engine
 
 
 @pytest.fixture
