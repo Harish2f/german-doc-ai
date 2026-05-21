@@ -1,5 +1,6 @@
 import uuid
 import structlog
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
@@ -79,19 +80,23 @@ async def ingest_document(
     embeddings = await generate_embeddings(chunk_texts)
 
     # step 4 - store chunks in OpenSearch
-    for chunk, embedding in zip(chunks,embeddings):
-        await opensearch.index(
-            index="german-docs-chunks",
-            body={
-                "doc_id":chunk.doc_id,
-                "text": chunk.text,
-                "chunk_index": chunk.chunk_index,
-                "doc_type": chunk.doc_type,
-                "source_url":chunk.source_url,
-                "embedding":embedding,
-                "page_number":chunk.page_number,
-                "section_reference":chunk.section_reference,
-            }
+    loop = asyncio.get_event_loop()
+    for chunk, embedding in zip(chunks, embeddings):
+        await loop.run_in_executor(
+            None,
+            lambda c=chunk, e=embedding: opensearch.index(
+                index="german-docs-chunks",
+                body={
+                    "doc_id": c.doc_id,
+                    "text": c.text,
+                "chunk_index": c.chunk_index,
+                    "doc_type": c.doc_type,
+                    "source_url": c.source_url,
+                    "embedding": e,
+                    "page_number": c.page_number,
+                    "section_reference": c.section_reference,
+                }
+            )
         )
 
     # step 5 - store document metadata in PostgreSQL

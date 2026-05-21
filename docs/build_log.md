@@ -202,3 +202,37 @@
 - Centralize test fixtures for DB state builders to reduce repetitive setup across compliance tests.
 - Add structured schemas (Pydantic) for service inputs to avoid implicit dict contracts.
 - Extend erasure flow with observability hooks (metrics + tracing) to verify DSGVO compliance in production runs.
+
+## Langfuse and Azure Deployment
+
+### What I built
+
+- Containerized the RAG application using Docker and deployed it to Azure Container Apps through Azure Container Registry (ACR).
+- Integrated Neon PostgreSQL for relational persistence, AWS OpenSearch Serverless for vector retrieval, and Langfuse for observability/tracing with user and session tracking.
+- Added Langfuse instrumentation across retrieval, generation, and compliance workflows to capture traces, spans, latency, token usage, and session-level debugging.
+- Built GitHub Actions CI/CD pipeline for automated Docker build, image push to ACR, and Azure deployment.
+- Implemented startup resilience and optional dependency handling so the API can boot even when observability or external services are temporarily unavailable.
+
+### What I Learned
+
+- The difference between ARM and AMD64 container builds and why Azure Container Apps commonly require explicit AMD64-compatible images.
+- How AWS IAM-based authentication works for OpenSearch Serverless compared to standard username/password OpenSearch clusters.
+- Tradeoffs between Neon and Supabase free tiers, especially around cold starts, connection limits, and operational simplicity.
+- How to design graceful startup behavior for optional infrastructure dependencies like Langfuse or OpenSearch.
+- Differences in secrets management between GitHub Actions secrets and Azure Container Apps environment variable configuration.
+
+### What broke and how I fixed it
+
+- Docker image failed on Azure due to ARM/AMD64 mismatch from local Mac build → fixed using explicit --platform linux/amd64 builds.
+- Azure PostgreSQL deployment initially failed because the PostgreSQL resource namespace was not registered -> resolved by manually registering the provider in Azure subscription settings.
+- Neon PostgreSQL intermittently returned connection refused during cold starts -> fixed with retry logic and startup connection backoff.
+- OpenSearch Serverless authentication failed due to incorrect AWS credential/signature configuration -> fixed by switching to SigV4-compatible IAM authentication flow.
+- SQLAlchemy async setup failed in Linux container because greenlet wheel dependency was missing -> fixed by explicitly adding greenlet to requirements.
+
+### What I would do differently
+
+- Move all infrastructure provisioning to Terraform or Bicep instead of manual Azure setup steps.
+- Add centralized secret management using Azure Key Vault instead of relying only on environment variables.
+- Use managed identity or workload identity federation instead of long-lived AWS access keys inside Azure deployments.
+- Add distributed tracing correlation between Langfuse traces, application logs, and infrastructure metrics.
+- Introduce staged deployment environments (dev/staging/prod) with automated rollback support in CI/CD.

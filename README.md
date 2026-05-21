@@ -16,6 +16,9 @@ DSGVO compliant architecture and deployed on Azure.
 - DSGVO Right to erasure with complete user data deletion across PostgreSQL and OpenSearch
 - Deployed on Azure Container Apps (West Europe region)
 
+## Live Demo
+https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/docs
+
 ## Architecture
 
 ![GermanDocAI Architecture](docs/architecture.png)
@@ -26,11 +29,14 @@ DSGVO compliant architecture and deployed on Azure.
 |---|---|
 | Language | Python 3.11 |
 | API | FastAPI |
-| Document Parsing | Docling |
-| Search | OpenSearch (hybrid BM25 + semantic) |
+| Document Parsing | Docling, pyPDF(Fallback) |
+| Search | AWS OpenSearch Serverless (EU North) (hybrid BM25 + semantic) |
+| Database | Neon PostgreSQL (EU Central) |
 | Agent | LangGraph |
-| Deployment | Azure Container Apps |
 | Observability | Langfuse |
+| Deployment | Azure Container Apps(Germany West Central) |
+| Container Registry | Azure Container Registry |
+| CI/CD | GitHub Actions |
 | Evaluation | RAGAS (planned) |
 
 ## API Endpoints
@@ -58,6 +64,7 @@ All protected endpoints require `X-Api-Key` header.
 - uv
 - Azure OpenAI account with GPT-4o deployment
 - Jina AI account (free tier)
+- AWS OpenSearch Serverless
 
  
 Install uv
