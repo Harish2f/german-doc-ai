@@ -2,6 +2,7 @@ import uuid
 import structlog
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from src.db.opensearch import get_opensearch
@@ -100,14 +101,20 @@ async def ingest_document(
         )
 
     # step 5 - store document metadata in PostgreSQL
-    record = DocumentRecord(
-        id=doc_id,
-        title=request.title,
-        doc_type=request.doc_type.value,
-        source_url= request.url,
-        page_count = parsed.page_count,
+    existing = await db.execute(
+        select(DocumentRecord).where(DocumentRecord.id == doc_id)
     )
-    db.add(record)
+    if existing.scalar_one_or_none() is None:
+        record = DocumentRecord(
+            id=doc_id,
+            title=request.title,
+            doc_type=request.doc_type.value,
+            source_url=request.url,
+            page_count=parsed.page_count,
+        )
+        db.add(record)
+    else:
+        logger.info("document_already_exists", doc_id=doc_id)
 
     logger.info(
         "document_ingested",
