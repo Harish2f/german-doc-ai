@@ -2,6 +2,7 @@ import uuid
 import structlog
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from src.db.opensearch import get_opensearch

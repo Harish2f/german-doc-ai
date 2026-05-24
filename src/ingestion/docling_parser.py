@@ -21,32 +21,9 @@ class ParsedDocument:
 
 
 async def parse_document_from_url(url: str) -> ParsedDocument:
-    """Download and parse a PDF from a URL.
-    
-    Uses Docling in development for better layout handling.
-    Falls back to pypdf in production or when Docling fails.
-    pypdf is always the fallback — it handles digital PDFs reliably
-    without requiring system graphics libraries.
-
-    Args:
-        url: Public URL of the PDF to parse.
-
-    Returns:
-        ParsedDocument with extracted text and metadata.
-
-    Raises:
-        ValueError: If the URL cannot be fetched or parsed.
-    """
     logger.info("parsing_document", url=url)
 
-    environment = os.getenv("ENVIRONMENT") or os.getenv("environment") or "development"
-    environment = environment.lower()
-
-    if environment == "production":
-        logger.info("using_pypdf_parser_production", url=url)
-        return await parse_pdf_with_pypdf(url)
-
-    # Development — try Docling first, fall back to pypdf
+    # Try Docling first, fall back to pypdf
     try:
         from docling.document_converter import DocumentConverter, PdfFormatOption
         from docling.datamodel.pipeline_options import PdfPipelineOptions
