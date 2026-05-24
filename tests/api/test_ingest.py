@@ -53,6 +53,30 @@ def test_ingest_document(client, auth_headers, mock_docling, mock_embeddings, mo
     assert response.json()["chunk_count"] > 0
 
 
+def test_ingest_duplicate_document(client, auth_headers,mock_docling, mock_embeddings, mock_opensearch):
+    """Test that ingesting the same URL twice returns 201 both times without error."""
+
+    payload = {
+        "url": "https://bafin.de/test.pdf",
+        "title": "BaFin Test Document",
+        "doc_type": "bafin",
+    }
+
+    # First ingestion
+    response1 = client.post("/ingestion/", headers=auth_headers, json=payload)
+    assert response1.status_code == 201
+    assert response1.json()["title"] == "BaFin Test Document"
+    assert response1.json()["page_count"] == 10
+    assert response1.json()["chunk_count"] > 0
+
+    # Second ingestion — same URL should not crash
+    response2 = client.post("/ingestion/", headers=auth_headers, json=payload)
+    assert response2.status_code == 201
+    assert response2.json()["title"] == "BaFin Test Document"
+    assert response2.json()["page_count"] == 10
+    assert response2.json()["chunk_count"] > 0
+
+
 def test_ingest_requires_auth(client, mock_docling, mock_embeddings, mock_opensearch):
     response = client.post(
         "/ingestion/",

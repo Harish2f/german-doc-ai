@@ -14,6 +14,7 @@ from src.db.postgres import get_db
 from src.db.models import DocumentRecord
 from src.dependencies import verify_api_key, get_request_id
 from src.logger import get_logger
+from sqlalchemy import select
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -103,7 +104,7 @@ async def ingest_document(
     # step 5 - store document metadata in PostgreSQL
     existing = await db.execute(
         select(DocumentRecord).where(DocumentRecord.id == doc_id)
-    )
+)
     if existing.scalar_one_or_none() is None:
         record = DocumentRecord(
             id=doc_id,
