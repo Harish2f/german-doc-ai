@@ -23,6 +23,8 @@ RUN pip install uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
+RUN uv run python3 -c "import nltk; nltk.download('punkt_tab', download_dir='/usr/local/share/nltk_data')"
+
 COPY src/ ./src/
 
 EXPOSE 8000
