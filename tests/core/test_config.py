@@ -7,7 +7,7 @@ def test_settings_loads():
 
 def test_settings_default():
     settings = get_settings()
-    assert settings.opensearch_index == "german-docs"
+    assert settings.opensearch_index == "german-docs-chunks"
 
 
 def test_settings_environment():

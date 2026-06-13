@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     # for local
     opensearch_host: str = "localhost"
     opensearch_port:int = 9200
-    opensearch_index: str = "german-docs"
+    opensearch_index: str = "german-docs-chunks"
 
     # PostgreSQL
     postgres_host: str = "localhost"
