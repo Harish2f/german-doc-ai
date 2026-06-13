@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Any
 from operator import add
 
 
@@ -29,3 +29,4 @@ class AgentState(TypedDict):
     session_id: str | None
     prompt_tokens: int
     completion_tokens: int
+    db: Any  # AsyncSession — using Any to avoid circular imports

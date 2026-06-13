@@ -105,3 +105,112 @@ async def parse_pdf_with_pypdf(url: str) -> ParsedDocument:
     )
 
     return ParsedDocument(content=content, page_count=page_count, source_url=url)
+
+
+async def parse_document_from_bytes(
+    file_bytes: bytes,
+    filename: str = "document.pdf",
+    source_url: str = "",
+) -> ParsedDocument:
+    """Parse a PDF from uploaded bytes.
+    
+    Saves to a temporary file, parses with Docling,
+    then cleans up. Falls back to pypdf if Docling fails.
+    
+    Args:
+        file_bytes: Raw PDF bytes from file upload.
+        filename: Original filename for logging.
+        source_url: Optional source URL for metadata.
+        
+    Returns:
+        ParsedDocument with extracted text and metadata.
+    """
+    import tempfile
+    import os
+
+    logger.info("parsing_document_from_bytes", filename=filename)
+
+    # Try Docling first
+    try:
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.datamodel.base_models import InputFormat
+
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = False
+        pipeline_options.do_table_structure = False
+        pipeline_options.generate_page_images = False
+        pipeline_options.generate_picture_images = False
+
+        converter = DocumentConverter(
+            allowed_formats=[InputFormat.PDF],
+            format_options={
+                InputFormat.PDF: PdfFormatOption(
+                    pipeline_options=pipeline_options
+                )
+            }
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+
+        try:
+            result = converter.convert(tmp_path)
+            content = result.document.export_to_markdown()
+            page_count = len(result.document.pages)
+        finally:
+            os.unlink(tmp_path)
+
+        logger.info(
+            "document_parsed_docling",
+            filename=filename,
+            page_count=page_count,
+            content_length=len(content),
+        )
+        return ParsedDocument(
+            content=content,
+            page_count=page_count,
+            source_url=source_url or filename,
+        )
+
+    except Exception as e:
+        logger.warning("docling_bytes_parser_failed", filename=filename, error=str(e))
+        return await parse_pdf_bytes_with_pypdf(file_bytes, filename, source_url)
+
+
+async def parse_pdf_bytes_with_pypdf(
+    file_bytes: bytes,
+    filename: str = "document.pdf",
+    source_url: str = "",
+) -> ParsedDocument:
+    """Fallback PDF parsing from bytes using pypdf."""
+    import io
+    logger.info("parsing_bytes_pypdf", filename=filename)
+
+    reader = PdfReader(io.BytesIO(file_bytes))
+    page_count = len(reader.pages)
+
+    pages = []
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            pages.append(text)
+
+    content = "\n\n".join(pages).strip()
+
+    if not content:
+        raise ValueError(f"No text could be extracted from {filename}")
+
+    logger.info(
+        "document_parsed_pypdf_bytes",
+        filename=filename,
+        page_count=page_count,
+        content_length=len(content),
+    )
+
+    return ParsedDocument(
+        content=content,
+        page_count=page_count,
+        source_url=source_url or filename,
+    )

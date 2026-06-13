@@ -1,7 +1,6 @@
 import structlog
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from src.db.opensearch import get_opensearch
 from src.search.retriever import hybrid_search
 from src.models.document import DocumentType
 from src.rag.generator import generate_answer
@@ -64,7 +63,6 @@ class AskRequest(BaseModel):
 async def ask(
     request: AskRequest,
     api_key: str = Depends(verify_api_key),
-    opensearch=Depends(get_opensearch),
     db: AsyncSession = Depends(get_db),
 )-> AskResponse:
     """Retrieve relevant document chunks for a query.
@@ -91,9 +89,10 @@ async def ask(
     try:
         results = await hybrid_search(
             query=request.query,
-            client=opensearch,
+            client=None,
             doc_types=doc_type_values,
             top_k=request.top_k,
+            db=db,
         ) 
     except Exception as e:
         logger.error("search_failed", query=request.query, error=str(e))
@@ -196,7 +195,6 @@ async def ask(
 async def ask_agent(
     request: AskRequest,
     api_key: str = Depends(verify_api_key),
-    opensearch=Depends(get_opensearch),
     db: AsyncSession = Depends(get_db),
 ) -> AgentResponse:
     """Answer a query using the LangGraph RAG agent.
@@ -235,10 +233,10 @@ async def ask_agent(
     try:
         result = await run_agent(
             query=request.query,
-            opensearch_client=opensearch,
             doc_types=doc_type_values,
             user_id=request.user_id,
             session_id=request.session_id,
+            db=db,
         )
         llm_circuit_breaker.call_succeeded()
     except Exception as e:

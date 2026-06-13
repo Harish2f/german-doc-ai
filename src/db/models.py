@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, Text, DateTime, JSON
 from sqlalchemy.orm import DeclarativeBase
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import ForeignKey
 
 
 class Base(DeclarativeBase):
@@ -68,5 +70,22 @@ class ChatMessage(Base):
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     query_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True),
+                        default=lambda: datetime.now(timezone.utc))
+    
+
+class DocumentChunk(Base):
+    """PostgreSQL table for document chunks with vector embeddings."""
+    __tablename__ = "document_chunks"
+
+    id = Column(String, primary_key=True)
+    doc_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    chunk_text = Column(Text, nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    doc_type = Column(String, nullable=False)
+    source_url = Column(String, default="")
+    page_number = Column(Integer, default=0)
+    section_ref = Column(String, default="")
+    embedding = Column(Vector(768), nullable=True)
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))

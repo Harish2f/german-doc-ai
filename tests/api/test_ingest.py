@@ -28,16 +28,18 @@ def mock_embeddings(mocker):
         return_value = [SAMPLE_EMBEDDING] * 50,
     )
 
+
 @pytest.fixture
-def mock_opensearch(mocker):
-    """Mock opensearch indexing."""
+def mock_chunk_repository(mocker):
+    """Mock chunk repository to avoid real database writes."""
     return mocker.patch(
-        "src.routers.ingest.get_opensearch",
-        return_value = AsyncMock(),
+        "src.routers.ingest.chunk_repository.insert_chunks",
+        new_callable=AsyncMock,
+        return_value=50,
     )
 
 
-def test_ingest_document(client, auth_headers, mock_docling, mock_embeddings, mock_opensearch):
+def test_ingest_document(client, auth_headers, mock_docling, mock_embeddings, mock_chunk_repository):
     response = client.post(
         "/ingestion/",
         json={
@@ -53,7 +55,7 @@ def test_ingest_document(client, auth_headers, mock_docling, mock_embeddings, mo
     assert response.json()["chunk_count"] > 0
 
 
-def test_ingest_duplicate_document(client, auth_headers,mock_docling, mock_embeddings, mock_opensearch):
+def test_ingest_duplicate_document(client, auth_headers,mock_docling, mock_embeddings, mock_chunk_repository):
     """Test that ingesting the same URL twice returns 201 both times without error."""
 
     payload = {
@@ -77,7 +79,7 @@ def test_ingest_duplicate_document(client, auth_headers,mock_docling, mock_embed
     assert response2.json()["chunk_count"] > 0
 
 
-def test_ingest_requires_auth(client, mock_docling, mock_embeddings, mock_opensearch):
+def test_ingest_requires_auth(client, mock_docling, mock_embeddings, mock_chunk_repository):
     response = client.post(
         "/ingestion/",
         json={
@@ -89,7 +91,7 @@ def test_ingest_requires_auth(client, mock_docling, mock_embeddings, mock_opense
     assert response.status_code == 401
 
 
-def test_ingest_invalid_doc_type(client, auth_headers, mock_docling, mock_embeddings,mock_opensearch):
+def test_ingest_invalid_doc_type(client, auth_headers, mock_docling, mock_embeddings,mock_chunk_repository):
     response = client.post(
         "/ingestion/",
         json={

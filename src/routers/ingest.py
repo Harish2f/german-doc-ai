@@ -1,11 +1,11 @@
 import uuid
 import structlog
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi import UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
-from src.db.opensearch import get_opensearch
+from src.db.chunks import chunk_repository
 from src.ingestion.docling_parser import parse_document_from_url
 from src.ingestion.chunker import chunk_text
 from src.ingestion.embedder import generate_embeddings
@@ -14,7 +14,7 @@ from src.db.postgres import get_db
 from src.db.models import DocumentRecord
 from src.dependencies import verify_api_key, get_request_id
 from src.logger import get_logger
-from sqlalchemy import select
+
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -40,7 +40,6 @@ async def ingest_document(
     request: IngestRequest,
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
-    opensearch=Depends(get_opensearch),
 )-> IngestResponse:
     """Ingest a PDF document from the URL.
     
@@ -81,25 +80,21 @@ async def ingest_document(
     chunk_texts = [chunk.text for chunk in chunks]
     embeddings = await generate_embeddings(chunk_texts)
 
-    # step 4 - store chunks in OpenSearch
-    loop = asyncio.get_event_loop()
-    for chunk, embedding in zip(chunks, embeddings):
-        await loop.run_in_executor(
-            None,
-            lambda c=chunk, e=embedding: opensearch.index(
-                index="german-docs-chunks",
-                body={
-                    "doc_id": c.doc_id,
-                    "text": c.text,
-                "chunk_index": c.chunk_index,
-                    "doc_type": c.doc_type,
-                    "source_url": c.source_url,
-                    "embedding": e,
-                    "page_number": c.page_number,
-                    "section_reference": c.section_reference,
-                }
-            )
-        )
+    # step 4 - store chunks in PostgreSQL
+    chunk_dicts = [
+        {
+            "doc_id": chunk.doc_id,
+            "text": chunk.text,
+            "chunk_index": chunk.chunk_index,
+            "doc_type": chunk.doc_type,
+            "source_url": chunk.source_url,
+            "page_number": chunk.page_number,
+            "section_reference": chunk.section_reference,
+            "embedding": embeddings[i],
+        }
+        for i, chunk in enumerate(chunks)
+    ]
+    await chunk_repository.insert_chunks(db, chunk_dicts)
 
     # step 5 - store document metadata in PostgreSQL
     existing = await db.execute(
@@ -132,3 +127,97 @@ async def ingest_document(
         message=f"Successfully ingested {len(chunks)} chunks from {parsed.page_count} pages",
     )
 
+
+@router.post("/upload", status_code=201, response_model=IngestResponse)
+async def ingest_document_upload(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    doc_type: DocumentType = Form(...),
+    api_key: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> IngestResponse:
+    """Ingest a PDF document from file upload.
+    
+    Accepts multipart form data with a PDF file.
+    Uses Docling for parsing with pypdf fallback.
+    Requires x_api_key header.
+    """
+    from src.ingestion.docling_parser import parse_document_from_bytes
+
+    request_id = get_request_id()
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    logger.info("ingest_upload_received", filename=file.filename, title=title)
+
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=422, detail="Only PDF files are supported.")
+
+    file_bytes = await file.read()
+    doc_id = f"doc_{uuid.uuid5(uuid.NAMESPACE_URL, file.filename + title).hex[:12]}"
+
+    try:
+        parsed = await parse_document_from_bytes(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            source_url=file.filename,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    chunks = chunk_text(
+        text=parsed.content,
+        doc_id=doc_id,
+        doc_type=doc_type.value,
+        source_url=file.filename,
+    )
+
+    if not chunks:
+        raise HTTPException(status_code=422, detail="Document produced no chunks.")
+
+    chunk_texts = [chunk.text for chunk in chunks]
+    embeddings = await generate_embeddings(chunk_texts)
+
+    # step 4 - store chunks in PostgreSQL
+    chunk_dicts = [
+        {
+            "doc_id": chunk.doc_id,
+            "text": chunk.text,
+            "chunk_index": chunk.chunk_index,
+            "doc_type": chunk.doc_type,
+            "source_url": chunk.source_url,
+            "page_number": chunk.page_number,
+            "section_reference": chunk.section_reference,
+            "embedding": embeddings[i],
+        }
+        for i, chunk in enumerate(chunks)
+    ]
+    await chunk_repository.insert_chunks(db, chunk_dicts)
+
+    existing = await db.execute(
+        select(DocumentRecord).where(DocumentRecord.id == doc_id)
+    )
+    if existing.scalar_one_or_none() is None:
+        record = DocumentRecord(
+            id=doc_id,
+            title=title,
+            doc_type=doc_type.value,
+            source_url=file.filename,
+            page_count=parsed.page_count,
+        )
+        db.add(record)
+    else:
+        logger.info("document_already_exists", doc_id=doc_id)
+
+    logger.info(
+        "document_uploaded_ingested",
+        doc_id=doc_id,
+        chunk_count=len(chunks),
+        page_count=parsed.page_count,
+    )
+
+    return IngestResponse(
+        doc_id=doc_id,
+        title=title,
+        page_count=parsed.page_count,
+        chunk_count=len(chunks),
+        message=f"Successfully ingested {len(chunks)} chunks from {parsed.page_count} pages",
+    )

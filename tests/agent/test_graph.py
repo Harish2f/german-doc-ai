@@ -15,15 +15,12 @@ SAMPLE_CHUNKS = [
 
 @pytest.mark.asyncio
 async def test_run_agent(mocker):
-    mock_opensearch = AsyncMock()
-
     mocker.patch(
         "src.agent.nodes.hybrid_search",
         new_callable=AsyncMock,
         return_value=SAMPLE_CHUNKS,
     )
 
-    # Mock the Azure client used inside grade_documents
     mock_client = AsyncMock()
     mock_client.chat.completions.create.return_value = MagicMock(
         choices=[MagicMock(message=MagicMock(content='{"relevant": true}'))],
@@ -48,7 +45,6 @@ async def test_run_agent(mocker):
     from src.agent.graph import run_agent
     result = await run_agent(
         query="What does BaFin require for AI?",
-        opensearch_client=mock_opensearch,
     )
 
     assert "answer" in result

@@ -30,14 +30,14 @@ https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/
 | Language | Python 3.11 |
 | API | FastAPI |
 | Document Parsing | Docling, pyPDF(Fallback) |
-| Search | AWS OpenSearch Serverless (EU North) (hybrid BM25 + semantic) |
+| Search | pgvector (hybrid BM25 + semantic) |
 | Database | Neon PostgreSQL (EU Central) |
 | Agent | LangGraph |
 | Observability | Langfuse |
 | Deployment | Azure Container Apps(Germany West Central) |
 | Container Registry | Azure Container Registry |
 | CI/CD | GitHub Actions |
-| Evaluation | RAGAS (planned) |
+| Evaluation | RAGAS |
 
 ## API Endpoints
 
