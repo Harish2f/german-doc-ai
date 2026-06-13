@@ -44,13 +44,9 @@ async def override_get_db():
 def reset_test_db():
     """Drop and recreate all tables before each test."""
     import asyncio
-    asyncio.get_event_loop().run_until_complete(
-        _reset_db()
-    )
+    asyncio.run(_reset_db())
     yield
-    asyncio.get_event_loop().run_until_complete(
-        _reset_db()
-    )
+    asyncio.run(_reset_db())
 
 
 async def _reset_db():
