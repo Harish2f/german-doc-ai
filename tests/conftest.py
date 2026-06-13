@@ -7,7 +7,6 @@ from src.main import app
 from src.db.postgres import get_db
 from src.db.models import Base
 from src.dependencies import verify_api_key
-from src.db.opensearch import get_opensearch
 from unittest.mock import AsyncMock, MagicMock
 from src.db import postgres as postgres_module
 
@@ -87,13 +86,3 @@ async def db_session():
     async with TestingSessionLocal() as session:
         yield session
         await session.rollback()
-
-
-@pytest.fixture(autouse=True)
-def mock_opensearch_dependency():
-    mock = MagicMock()
-    mock.index = AsyncMock()
-    mock.search = AsyncMock(return_value={"hits": {"hits": []}})
-    app.dependency_overrides[get_opensearch] = lambda: mock
-    yield
-    app.dependency_overrides.pop(get_opensearch, None)

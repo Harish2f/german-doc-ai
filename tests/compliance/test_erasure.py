@@ -298,19 +298,8 @@ async def test_erase_user_data_successfully_removes_everything(db_session):
 
     await db_session.commit()
 
-    mock_opensearch = AsyncMock()
-
-    mock_opensearch.delete_by_query.return_value = {
-        "deleted": 7
-    }
-
-    mock_opensearch.count.return_value = {
-        "count": 0
-    }
-
     summary = await service.erase_user_data(
         db=db_session,
-        opensearch_client=mock_opensearch,
         user_id="target-user",
     )
 
@@ -342,17 +331,12 @@ async def test_erase_user_data_successfully_removes_everything(db_session):
     assert summary["chat_sessions_deleted"] == 1
     assert summary["chat_messages_deleted"] == 1
     assert summary["documents_deleted"] == 1
-    assert summary["opensearch_chunks_deleted"] == 7
-
-    mock_opensearch.delete_by_query.assert_awaited_once()
-    mock_opensearch.count.assert_awaited_once()
-
 
 @pytest.mark.asyncio
-async def test_erase_user_data_aborts_when_opensearch_incomplete(
+async def test_erase_user_data_removes_documents_successfully(
     db_session,
 ):
-    """Test service aborts PostgreSQL deletion if OpenSearch fails."""
+    """Test erasure succeeds when user has documents."""
 
     repository = ErasureRepository()
     service = ErasureService(repository)
@@ -376,37 +360,33 @@ async def test_erase_user_data_aborts_when_opensearch_incomplete(
 
     await db_session.commit()
 
-    mock_opensearch = AsyncMock()
+    summary = await service.erase_user_data(
+        db=db_session,
+        user_id="target-user",
+    )
 
-    mock_opensearch.delete_by_query.return_value = {
-        "deleted": 1
-    }
+    await db_session.commit()
 
-    mock_opensearch.count.return_value = {
-        "count": 2
-    }
+    remaining_docs = await db_session.execute(
+        select(DocumentRecord)
+    )
 
-    with pytest.raises(ValueError) as exc:
-        await service.erase_user_data(
-            db=db_session,
-            opensearch_client=mock_opensearch,
-            user_id="target-user",
-        )
+    remaining_logs = await db_session.execute(
+        select(AuditLog)
+    )
 
-    assert "OpenSearch erasure incomplete" in str(exc.value)
+    assert remaining_docs.scalars().all() == []
+    assert remaining_logs.scalars().all() == []
 
-    result = await db_session.execute(select(AuditLog))
-
-    remaining_logs = result.scalars().all()
-
-    assert len(remaining_logs) == 1
+    assert summary["documents_deleted"] == 1
+    assert summary["audit_logs_deleted"] == 1
 
 
 @pytest.mark.asyncio
-async def test_erase_user_data_skips_opensearch_when_no_documents(
+async def test_erase_user_data_handles_users_without_documents(
     db_session,
 ):
-    """Test service skips OpenSearch calls if user has no documents."""
+    """Test erasure succeeds when user has no documents."""
 
     repository = ErasureRepository()
     service = ErasureService(repository)
@@ -421,11 +401,8 @@ async def test_erase_user_data_skips_opensearch_when_no_documents(
 
     await db_session.commit()
 
-    mock_opensearch = AsyncMock()
-
     summary = await service.erase_user_data(
         db=db_session,
-        opensearch_client=mock_opensearch,
         user_id="user-no-docs",
     )
 
@@ -433,7 +410,3 @@ async def test_erase_user_data_skips_opensearch_when_no_documents(
 
     assert summary["audit_logs_deleted"] == 1
     assert summary["documents_deleted"] == 0
-    assert summary["opensearch_chunks_deleted"] == 0
-
-    mock_opensearch.delete_by_query.assert_not_called()
-    mock_opensearch.count.assert_not_called()

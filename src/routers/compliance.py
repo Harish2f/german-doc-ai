@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.postgres import get_db
-from src.db.opensearch import get_opensearch
 from src.compliance.audit import audit_service
 from src.compliance.chat import chat_service
 from src.compliance.erasure import erasure_service
@@ -21,7 +20,6 @@ class ErasureResponse(BaseModel):
     chat_sessions_deleted: int
     chat_messages_deleted: int
     documents_deleted: int
-    opensearch_chunks_deleted: int
     erasure_timestamp: str
 
 
@@ -112,12 +110,11 @@ async def erase_user_data(
     user_id: str,
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
-    opensearch=Depends(get_opensearch),
 ):
     """Erase all data for a user — DSGVO Article 17 right to erasure.
     
-    Deletes from OpenSearch first, then PostgreSQL atomically.
-    Returns summary of what was deleted.
+    Deletes from PostgreSQL atomically. Document chunks are removed
+    automatically via foreign key cascade.
     """
     request_id = get_request_id()
     structlog.contextvars.bind_contextvars(request_id=request_id)
@@ -126,7 +123,6 @@ async def erase_user_data(
     try:
         summary = await erasure_service.erase_user_data(
             db=db,
-            opensearch_client=opensearch,
             user_id=user_id,
         )
         return ErasureResponse(**summary)

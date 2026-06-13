@@ -1,143 +1,52 @@
 import asyncio
-from opensearchpy import OpenSearch, AsyncOpenSearch
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.ingestion.embedder import generate_embeddings
+from src.db.chunks import chunk_repository
 from src.logger import get_logger
 
-logger=get_logger(__name__)
+logger = get_logger(__name__)
 
-INDEX_NAME = "german-docs-chunks"
 TOP_K = 5
 
-async def _run_search(client, index: str, body: dict) -> dict:
-    """Run OpenSearch search supporting both sync and async clients."""
-    if isinstance(client, AsyncOpenSearch):
-        return await client.search(index=index, body=body)
-    else:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: client.search(index=index, body=body)
-        )
 
 async def hybrid_search(
-        query: str,
-        client: AsyncOpenSearch,
-        doc_types:list[str] | None = None,
-        top_k: int = TOP_K,
+    query: str,
+    client,  # kept for backward compatibility with agent nodes
+    doc_types: list[str] | None = None,
+    top_k: int = TOP_K,
+    db: AsyncSession | None = None,
 ) -> list[dict]:
-    """Performance hybrid BM25 + Semantic Search on document chunks.
-    
-    Combines keyword search (BM25) AND Vector similarity search
-    using reciprocal fusion rank to produce a single ranked list.
+    """Hybrid BM25 + semantic search using pgvector and PostgreSQL full-text search.
+
+    Combines keyword search (tsvector/tsquery) and vector similarity search
+    using Reciprocal Rank Fusion to produce a single ranked list.
 
     Args:
         query: User's question in German or English.
-        client: Async Opensearch client.
+        client: Unused — kept for backward compatibility.
         doc_types: Optional list of doc types to filter by.
-        top_k: Number of rewults to return.
+        top_k: Number of results to return.
+        db: Async database session.
 
     Returns:
-        List of chunks dicts ranked by hybrid relevance score.
+        List of chunk dicts ranked by hybrid relevance score.
     """
-    logger.info(
-        "hybrid_search_started",
-        query=query,
-        top_k=top_k
-    )
+    logger.info("hybrid_search_started", query=query, top_k=top_k)
 
-    # generate query embedding with retrieval.query task
+    if db is None:
+        raise ValueError("db session is required for pgvector hybrid search")
+
+    # Generate query embedding
     query_embeddings = await generate_embeddings([query], task="retrieval.query")
     query_vector = query_embeddings[0]
 
-    # Build Filter if doc_types is provided
-    filter_clause = []
-    if doc_types:
-        filter_clause = [{"terms": {"doc_type": doc_types}}]
-
-    # BM25 Keyword Search
-    bm25_query = {
-        "size": top_k * 2,
-        "query": {
-            "bool":{
-                "must": [{"match": {"text": query}}],
-                "filter": filter_clause,
-            }
-        },
-    }
-
-    # SEMANTIC VECTOR SEARCH
-
-    knn_query = {
-        "size": top_k * 2,
-        "query": {
-            "knn":{
-                "embedding":{
-                    "vector":query_vector,
-                    "k": top_k * 2,
-                }
-            }
-        },
-    }
-
-    # Run both searches
-    
-    bm25_results, knn_results = await asyncio.gather(
-    _run_search(client, INDEX_NAME, bm25_query),
-    _run_search(client, INDEX_NAME, knn_query),
-    )
-
-    # Reciprocal rank fusion
-    fused = reciprocal_rank_fusion(
-        bm25_results["hits"]["hits"],
-        knn_results["hits"]["hits"],
+    results = await chunk_repository.hybrid_search(
+        db=db,
+        query_text=query,
+        query_embedding=query_vector,
+        doc_types=doc_types,
         top_k=top_k,
     )
 
-    logger.info(
-        "hybrid_search_completed",
-        query = query,
-        results_count = len(fused),
-        )
-    return fused
-
-def reciprocal_rank_fusion(
-        bm25_hits: list[dict],
-        knn_hits:list[dict],
-        top_k:int=TOP_K,
-        k: int=60,
-)-> list[dict]:
-    """Combine BM25 and KNN results using reciprocal rank fusion.
-    
-    RRF Score = 1/(k + rank_in_bm25) + 1/(k + rank_in_knn)
-
-    Higher Score = more relevant. Documents appearing high in
-    both result lists get the highest combined scores.
-
-    Args:
-        bm25_hits: Results are BM25 keyword search.
-        knn_hits: Results from KNN semantic search.
-        top_k: Number of results o return.
-        K: RRF constant - higher k reduces impact of rank differences.
-
-    Returns:
-        Top-k chunks sorted by RRF score descending.  
-    """
-    scores: dict[str, float]={}
-    docs: dict[str, dict] = {}
-
-    for rank, hit in enumerate(bm25_hits):
-        doc_id=hit["_id"]
-        scores[doc_id] = scores.get(doc_id, 0) + 1/ (k + rank + 1)
-        docs[doc_id] = hit["_source"]
-
-    for rank, hit in enumerate(knn_hits):
-        doc_id = hit["_id"]
-        scores[doc_id] = scores.get(doc_id, 0) + 1/ (k + rank + 1)
-        docs[doc_id] = hit["_source"]
-
-    sorted_ids= sorted(scores.keys(), key=lambda x: scores[x], reverse = True )
-
-    return [
-        {**docs[doc_id], "rrf_score": scores[doc_id]}
-        for doc_id in sorted_ids[: top_k]
-    ]
+    logger.info("hybrid_search_completed", query=query, results_count=len(results))
+    return results

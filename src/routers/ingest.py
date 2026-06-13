@@ -1,12 +1,11 @@
 import uuid
 import structlog
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
-from src.db.opensearch import get_opensearch
+from src.db.chunks import chunk_repository
 from src.ingestion.docling_parser import parse_document_from_url
 from src.ingestion.chunker import chunk_text
 from src.ingestion.embedder import generate_embeddings
@@ -15,7 +14,7 @@ from src.db.postgres import get_db
 from src.db.models import DocumentRecord
 from src.dependencies import verify_api_key, get_request_id
 from src.logger import get_logger
-from sqlalchemy import select
+
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
@@ -41,7 +40,6 @@ async def ingest_document(
     request: IngestRequest,
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
-    opensearch=Depends(get_opensearch),
 )-> IngestResponse:
     """Ingest a PDF document from the URL.
     
@@ -82,25 +80,21 @@ async def ingest_document(
     chunk_texts = [chunk.text for chunk in chunks]
     embeddings = await generate_embeddings(chunk_texts)
 
-    # step 4 - store chunks in OpenSearch
-    loop = asyncio.get_event_loop()
-    for chunk, embedding in zip(chunks, embeddings):
-        await loop.run_in_executor(
-            None,
-            lambda c=chunk, e=embedding: opensearch.index(
-                index="german-docs-chunks",
-                body={
-                    "doc_id": c.doc_id,
-                    "text": c.text,
-                "chunk_index": c.chunk_index,
-                    "doc_type": c.doc_type,
-                    "source_url": c.source_url,
-                    "embedding": e,
-                    "page_number": c.page_number,
-                    "section_reference": c.section_reference,
-                }
-            )
-        )
+    # step 4 - store chunks in PostgreSQL
+    chunk_dicts = [
+        {
+            "doc_id": chunk.doc_id,
+            "text": chunk.text,
+            "chunk_index": chunk.chunk_index,
+            "doc_type": chunk.doc_type,
+            "source_url": chunk.source_url,
+            "page_number": chunk.page_number,
+            "section_reference": chunk.section_reference,
+            "embedding": embeddings[i],
+        }
+        for i, chunk in enumerate(chunks)
+    ]
+    await chunk_repository.insert_chunks(db, chunk_dicts)
 
     # step 5 - store document metadata in PostgreSQL
     existing = await db.execute(
@@ -141,7 +135,6 @@ async def ingest_document_upload(
     doc_type: DocumentType = Form(...),
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
-    opensearch=Depends(get_opensearch),
 ) -> IngestResponse:
     """Ingest a PDF document from file upload.
     
@@ -183,24 +176,21 @@ async def ingest_document_upload(
     chunk_texts = [chunk.text for chunk in chunks]
     embeddings = await generate_embeddings(chunk_texts)
 
-    loop = asyncio.get_event_loop()
-    for chunk, embedding in zip(chunks, embeddings):
-        await loop.run_in_executor(
-            None,
-            lambda c=chunk, e=embedding: opensearch.index(
-                index="german-docs-chunks",
-                body={
-                    "doc_id": c.doc_id,
-                    "text": c.text,
-                    "chunk_index": c.chunk_index,
-                    "doc_type": c.doc_type,
-                    "source_url": c.source_url,
-                    "embedding": e,
-                    "page_number": c.page_number,
-                    "section_reference": c.section_reference,
-                }
-            )
-        )
+    # step 4 - store chunks in PostgreSQL
+    chunk_dicts = [
+        {
+            "doc_id": chunk.doc_id,
+            "text": chunk.text,
+            "chunk_index": chunk.chunk_index,
+            "doc_type": chunk.doc_type,
+            "source_url": chunk.source_url,
+            "page_number": chunk.page_number,
+            "section_reference": chunk.section_reference,
+            "embedding": embeddings[i],
+        }
+        for i, chunk in enumerate(chunks)
+    ]
+    await chunk_repository.insert_chunks(db, chunk_dicts)
 
     existing = await db.execute(
         select(DocumentRecord).where(DocumentRecord.id == doc_id)

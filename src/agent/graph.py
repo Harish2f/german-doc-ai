@@ -13,8 +13,23 @@ from src.logger import get_logger
 
 logger = get_logger(__name__)
 
+def out_of_scope_response(state: AgentState) -> dict:
+    """Return a polite out-of-scope message.
+    
+    Called when grade_query determines the question is not
+    related to German regulatory documents.
+    """
+    logger.warning("agent_out_of_scope", query=state["query"])
+    return {
+        "generation": (
+            "I can only answer questions about German regulatory documents "
+            "such as BaFin publications, EU AI Act, and DSGVO. "
+            "Please rephrase your question in that context."
+        )
+    }
 
-def create_rag_agent(opensearch_client):
+
+def create_rag_agent(pgvector_client=None):
     """Create and compile the RAG agent graph.
     
     Builds a StateGraph with nodes for retrieval, grading,
@@ -22,18 +37,16 @@ def create_rag_agent(opensearch_client):
     implement the agent's decision-making logic.
     
     Args:
-        opensearch_client: Async OpenSearch client passed to retrieve node.
+        pgvector_client: Async pgvector session passed to retrieve node.
         
     Returns:
         Compiled LangGraph runnable.
     """
     workflow = StateGraph(AgentState)
 
-    # Bind opensearch_client to retrieve node
-    retrieve_with_client = partial(retrieve, opensearch_client=opensearch_client)
 
     # Add nodes
-    workflow.add_node("retrieve", retrieve_with_client)
+    workflow.add_node("retrieve", retrieve)
     workflow.add_node("grade_documents", grade_documents)
     workflow.add_node("rewrite_query", rewrite_query)
     workflow.add_node("generate", generate)
@@ -72,28 +85,12 @@ def create_rag_agent(opensearch_client):
     return workflow.compile()
 
 
-def out_of_scope_response(state: AgentState) -> dict:
-    """Return a polite out-of-scope message.
-    
-    Called when grade_query determines the question is not
-    related to German regulatory documents.
-    """
-    logger.warning("agent_out_of_scope", query=state["query"])
-    return {
-        "generation": (
-            "I can only answer questions about German regulatory documents "
-            "such as BaFin publications, EU AI Act, and DSGVO. "
-            "Please rephrase your question in that context."
-        )
-    }
-
-
 async def run_agent(
     query: str,
-    opensearch_client,
     doc_types: list[str] | None = None,
     user_id: str = "anonymous",
     session_id: str | None = None,
+    db=None,
 ) -> dict:
     """Run the RAG agent for a given query.
     
@@ -102,13 +99,12 @@ async def run_agent(
     
     Args:
         query: User's question in German or English.
-        opensearch_client: Async OpenSearch client.
         doc_types: Optional document type filters.
         
     Returns:
         Dict with generation, chunks, and rewrite_count.
     """
-    graph = create_rag_agent(opensearch_client)
+    graph = create_rag_agent()
 
     initial_state: AgentState = {
         "query": query,
@@ -122,6 +118,7 @@ async def run_agent(
         "session_id": session_id,
         "prompt_tokens": 0,
         "completion_tokens": 0,
+        "db": db,
         }
 
     logger.info("agent_started", query=query)

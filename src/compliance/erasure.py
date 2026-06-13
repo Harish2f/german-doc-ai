@@ -12,7 +12,8 @@ class ErasureRepository:
     """Data access layer for DSGVO right-to-erasure operations.
     
     Single responsibility: delete user data across all tables.
-    Order matters — OpenSearch first, PostgreSQL second.
+    Document chunks are deleted automatically via ON DELETE CASCADE
+    when the parent document is deleted.
     """
 
     async def delete_audit_logs(
@@ -62,6 +63,7 @@ class ErasureRepository:
     async def delete_user_documents(
         self, db: AsyncSession, user_id: str
     ) -> int:
+        """Delete user documents. Chunks are removed automatically via CASCADE."""
         result = await db.execute(
             delete(DocumentRecord).where(
                 DocumentRecord.ingested_by == user_id
@@ -73,11 +75,9 @@ class ErasureRepository:
 class ErasureService:
     """Orchestrates complete DSGVO user data erasure.
     
-    Single responsibility: coordinate deletion across all systems
-    in the correct order with verification.
-    
-    OpenSearch deleted first — if it fails, PostgreSQL is untouched.
-    PostgreSQL deleted second — committed atomically.
+    Single responsibility: coordinate deletion across all PostgreSQL
+    tables. Document chunks cascade-delete with their parent documents,
+    so a single PostgreSQL transaction handles complete erasure.
     """
 
     def __init__(self, repository: ErasureRepository):
@@ -86,48 +86,20 @@ class ErasureService:
     async def erase_user_data(
         self,
         db: AsyncSession,
-        opensearch_client,
         user_id: str,
     ) -> dict:
         """Erase all data for a user — DSGVO Article 17.
         
         Args:
             db: Async database session.
-            opensearch_client: Async OpenSearch client.
             user_id: User whose data to erase.
             
         Returns:
             Summary of what was deleted.
-            
-        Raises:
-            ValueError: If OpenSearch erasure is incomplete.
         """
         logger.info("erasure_started", user_id=user_id)
 
-        # Step 1 — get document IDs before deletion
-        doc_ids = await self.repository.get_user_doc_ids(db, user_id)
-
-        # Step 2 — delete from OpenSearch first
-        opensearch_deleted = 0
-        if doc_ids:
-            response = await opensearch_client.delete_by_query(
-                index="german-docs-chunks",
-                body={"query": {"terms": {"doc_id": doc_ids}}},
-                params={"refresh": "true"},
-            )
-            opensearch_deleted = response.get("deleted", 0)
-
-            # Step 3 — verify OpenSearch deletion
-            count_response = await opensearch_client.count(
-                index="german-docs-chunks",
-                body={"query": {"terms": {"doc_id": doc_ids}}},
-            )
-            if count_response["count"] != 0:
-                raise ValueError(
-                    f"OpenSearch erasure incomplete for user {user_id} — aborting"
-                )
-
-        # Step 4 — delete from PostgreSQL atomically
+        # Document chunks cascade-delete automatically via ON DELETE CASCADE
         session_ids = await self.repository.delete_chat_sessions(db, user_id)
         messages_deleted = await self.repository.delete_chat_messages_by_sessions(
             db, session_ids
@@ -141,7 +113,6 @@ class ErasureService:
             "chat_sessions_deleted": len(session_ids),
             "chat_messages_deleted": messages_deleted,
             "documents_deleted": docs_deleted,
-            "opensearch_chunks_deleted": opensearch_deleted,
             "erasure_timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

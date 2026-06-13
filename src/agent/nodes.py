@@ -9,32 +9,19 @@ from langfuse import observe, propagate_attributes
 logger = get_logger(__name__)
 
 
-
-async def retrieve(state: AgentState, opensearch_client) -> dict:
-    """Retrieve relevant chunks from OpenSearch.
-    
-    Uses hybrid BM25 + semantic search with the current query
-    (original or rewritten).
-    
-    Args:
-        state: Current agent state.
-        opensearch_client: Async OpenSearch client.
-        
-    Returns:
-        Updated state with retrieved chunks.
-    """
+async def retrieve(state: AgentState) -> dict:
     query = state.get("rewritten_query") or state["query"]
     doc_types = state.get("doc_types", [])
-
+    db = state.get("db")
+    
     logger.info("agent_retrieving", query=query)
-
     chunks = await hybrid_search(
         query=query,
-        client=opensearch_client,
+        client=None,
         doc_types=doc_types if doc_types else None,
         top_k=5,
+        db=db,
     )
-
     logger.info("agent_retrieved", chunk_count=len(chunks))
     return {"chunks": chunks}
 

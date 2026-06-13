@@ -10,7 +10,6 @@ from src.logger import setup_logging, get_logger
 from src.routers import health, documents, ingest
 from src.dependencies import get_request_id
 from src.db.postgres import init_db
-from src.db.opensearch import init_opensearch
 from src.routers import ask
 from src.routers import health, documents, ingest, ask, compliance
 
@@ -32,10 +31,6 @@ async def lifespan(app: FastAPI):
         version=settings.app_version,
     )
     await init_db()
-    try:
-        await init_opensearch()
-    except Exception as e:
-        logger.warning("opensearch_unavailable", error=str(e))
     yield
     logger.info("germandocai_stopping")
 
