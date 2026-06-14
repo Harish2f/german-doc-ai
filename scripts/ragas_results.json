@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-14T16:08:56.607742",
+  "timestamp": "2026-06-14T19:26:45.080704",
   "model": "gpt-4o",
   "embedding_model": "jina-v3",
   "doc_types": [
@@ -7,10 +7,10 @@
   ],
   "summary": {
     "questions_evaluated": 10,
-    "avg_faithfulness": 0.789,
-    "avg_answer_relevancy": 0.665,
+    "avg_faithfulness": 0.696,
+    "avg_answer_relevancy": 0.608,
     "avg_context_precision": 0.5,
-    "overall_score": 0.651
+    "overall_score": 0.602
   },
   "results": [
     {
@@ -23,7 +23,7 @@
     },
     {
       "question": "How did BaFin address cyber risks in 2024 under DORA?",
-      "answer": "BaFin addressed cyber risks in 2024 under DORA through several measures aimed at enhancing the cyber resilience of the financial sector. These included:\n\n1. **Implementation Work for DORA**: BaFin car",
+      "answer": "BaFin addressed cyber risks in 2024 under DORA through several measures aimed at enhancing the cyber resilience of financial institutions. Specifically:\n\n1. **Implementation Work for DORA**: BaFin car",
       "chunks_retrieved": 5,
       "faithfulness": 1.0,
       "answer_relevancy": 0.857,
@@ -31,9 +31,9 @@
     },
     {
       "question": "What are the key implications of MiCAR for cryptoasset service providers?",
-      "answer": "The key implications of MiCAR (Regulation (EU) 2023/1114) for crypto-asset service providers are as follows:\n\n1. **Harmonised European Regulatory Framework**: MiCAR creates a harmonised regulatory fra",
+      "answer": "The key implications of MiCAR (Regulation (EU) 2023/1114) for crypto-asset service providers are as follows:\n\n1. **Harmonised European Regulatory Framework**: MiCAR establishes a unified regulatory fr",
       "chunks_retrieved": 5,
-      "faithfulness": 1.0,
+      "faithfulness": 0.875,
       "answer_relevancy": 0.667,
       "context_precision": 0.4
     },
@@ -47,10 +47,10 @@
     },
     {
       "question": "What measures did BaFin take against money laundering in 2024?",
-      "answer": "BaFin intensified its preventive supervision against money laundering in 2024. It conducted routine and ad hoc special audits in both the banking and non-banking sectors, focusing on high-risk product",
+      "answer": "BaFin ergriff im Jahr 2024 mehrere Ma\u00dfnahmen zur Bek\u00e4mpfung von Geldw\u00e4sche. Dazu geh\u00f6rten:\n\n1. **Intensivierte pr\u00e4ventive Aufsicht**: BaFin f\u00fchrte routinem\u00e4\u00dfige und ad-hoc-Sonderpr\u00fcfungen sowohl im Ba",
       "chunks_retrieved": 5,
-      "faithfulness": 0.857,
-      "answer_relevancy": 0.714,
+      "faithfulness": 0.143,
+      "answer_relevancy": 0.143,
       "context_precision": 0.6
     },
     {
@@ -65,21 +65,21 @@
       "question": "What enforcement actions did BaFin impose in the banking sector in 2024?",
       "answer": "BaFin imposed various enforcement actions in the banking sector in 2024. These included measures under sections 45, 45b, and 46 of the Banking Act, which address improving own funds and liquidity, org",
       "chunks_retrieved": 5,
-      "faithfulness": 0.857,
+      "faithfulness": 0.833,
       "answer_relevancy": 0.714,
       "context_precision": 0.4
     },
     {
       "question": "How did BaFin supervise ESG disclosures under SFDR?",
-      "answer": "BaFin supervised ESG disclosures under the EU Sustainable Finance Disclosure Regulation (SFDR) by conducting a non-representative sample in 2024. This sample revealed that financial market participant",
+      "answer": "BaFin supervised ESG disclosures under the EU Sustainable Finance Disclosure Regulation (SFDR) by collecting a non-representative sample in 2024. This sample revealed that financial market participant",
       "chunks_retrieved": 5,
-      "faithfulness": 0.875,
+      "faithfulness": 0.833,
       "answer_relevancy": 0.667,
       "context_precision": 0.2
     },
     {
       "question": "What role did geopolitical tensions play in BaFin supervisory priorities?",
-      "answer": "Geopolitische Spannungen spielten eine bedeutende Rolle in den Aufsichtspriorit\u00e4ten der BaFin. Aufgrund der starken Exportorientierung und internationalen Vernetzung Deutschlands ist das Land besonder",
+      "answer": "Geopolitische Spannungen spielten eine bedeutende Rolle in den Aufsichtspriorit\u00e4ten der BaFin im Jahr 2024. BaFin analysierte die Risiken, die sich f\u00fcr deutsche Unternehmen und Banken aus geopolitisch",
       "chunks_retrieved": 5,
       "faithfulness": 0.0,
       "answer_relevancy": 0.143,
@@ -87,9 +87,9 @@
     },
     {
       "question": "How did BaFin prepare for Digital Operational Resilience Act implementation?",
-      "answer": "BaFin prepared intensively for the implementation of the Digital Operational Resilience Act (DORA) throughout 2024. Key measures included:\n\n1. **Collaboration on Regulatory Frameworks**: BaFin played ",
+      "answer": "BaFin prepared extensively for the implementation of the Digital Operational Resilience Act (DORA) throughout 2024. Key measures included:\n\n1. **Collaboration and Rule Development**: BaFin played a si",
       "chunks_retrieved": 5,
-      "faithfulness": 0.75,
+      "faithfulness": 0.733,
       "answer_relevancy": 0.714,
       "context_precision": 0.4
     }

@@ -38,6 +38,20 @@ https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/
 | Container Registry | Azure Container Registry |
 | CI/CD | GitHub Actions |
 | Evaluation | RAGAS |
+| UI | Gradio |
+
+## Evaluation
+
+RAGAS evaluation on BaFin Annual Report 2024 (10 questions):
+
+| Metric | Score |
+|---|---|
+| Faithfulness | 0.696 |
+| Answer Relevancy | 0.608 |
+| Context Precision | 0.500 |
+| Overall | 0.651 |
+
+Run evaluation: `uv run python scripts/evaluate_ragas.py`
 
 ## API Endpoints
 
@@ -46,7 +60,7 @@ https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/
 | GET | /health | No | Service health check |
 | POST | /documents/ | Yes | Store a document |
 | GET | /documents/{doc_id} | Yes | Retrieve a document |
-| POST | /ingest/ | Yes | Ingest PDF from URL |
+| POST | /ingestion/ | Yes | Ingest PDF from URL |
 | POST | /ask/ | Yes | Hybrid search query with audit logging |
 | POST | /ask/agent | Yes | LangGraph agentic reasoning with audit logging |
 | GET | /compliance/audit/{user_id} | Yes | DSGVO audit trail for user |
@@ -59,12 +73,11 @@ All protected endpoints require `X-Api-Key` header.
 
 ## Prerequisites 
 
-- Docker Desktop 
 - Python 3.11+ 
 - uv
 - Azure OpenAI account with GPT-4o deployment
 - Jina AI account (free tier)
-- Postgres
+- Neon Postgres
 
  
 Install uv
@@ -88,11 +101,6 @@ Required keys in .env:
 - JINA_API_KEY — from jina.ai (free tier)
 
 
-Start the databases:
-```bash
-docker-compose up -d
-```
-
 Start the API:
 ```bash
 uv run uvicorn src.main:app --reload
@@ -110,7 +118,7 @@ uv run pytest tests/ -v
 
 Ingest a document:
 ```bash
-curl -X POST http://localhost:8000/ingest/ \
+curl -X POST http://localhost:8000/ingestion/ \
   -H "x-api-key: dev-secret-key" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://arxiv.org/pdf/2303.08774", "title": "GPT-4 Report", "doc_type": "other"}'
