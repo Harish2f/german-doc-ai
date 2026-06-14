@@ -1,6 +1,6 @@
 import uuid
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi import UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +10,7 @@ from src.ingestion.docling_parser import parse_document_from_url
 from src.ingestion.chunker import chunk_text
 from src.ingestion.embedder import generate_embeddings
 from src.models.document import DocumentType
-from src.db.postgres import get_db
+from src.db.postgres import get_db, get_session_factory
 from src.db.models import DocumentRecord
 from src.dependencies import verify_api_key, get_request_id
 from src.logger import get_logger
@@ -35,99 +35,101 @@ class IngestResponse(BaseModel):
     message: str
 
 
-@router.post("/", status_code= 201, response_model = IngestResponse)
+
+async def _run_ingestion(
+    doc_id: str,
+    request_url: str,
+    request_title: str,
+    doc_type_value: str,
+):
+    """Background task for document ingestion."""
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        try:
+            parsed = await parse_document_from_url(request_url)
+            chunks = chunk_text(
+                text=parsed.content,
+                doc_id=doc_id,
+                doc_type=doc_type_value,
+                source_url=request_url,
+            )
+            chunk_texts_list = [chunk.text for chunk in chunks]
+            embeddings = await generate_embeddings(chunk_texts_list)
+            chunk_dicts = [
+                {
+                    "doc_id": chunk.doc_id,
+                    "text": chunk.text,
+                    "chunk_index": chunk.chunk_index,
+                    "doc_type": chunk.doc_type,
+                    "source_url": chunk.source_url,
+                    "page_number": chunk.page_number,
+                    "section_reference": chunk.section_reference,
+                    "embedding": embeddings[i],
+                }
+                for i, chunk in enumerate(chunks)
+            ]
+            await chunk_repository.insert_chunks(db, chunk_dicts)
+            existing = await db.execute(
+                select(DocumentRecord).where(DocumentRecord.id == doc_id)
+            )
+            if existing.scalar_one_or_none() is None:
+                record = DocumentRecord(
+                    id=doc_id,
+                    title=request_title,
+                    doc_type=doc_type_value,
+                    source_url=request_url,
+                    page_count=parsed.page_count,
+                )
+                db.add(record)
+            await db.commit()
+            logger.info("background_ingestion_completed", doc_id=doc_id)
+        except Exception as e:
+            logger.error("background_ingestion_failed", doc_id=doc_id, error=str(e))
+
+
+@router.post("/", status_code=202, response_model=IngestResponse)
 async def ingest_document(
     request: IngestRequest,
+    background_tasks: BackgroundTasks,
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
-)-> IngestResponse:
-    """Ingest a PDF document from the URL.
-    
-    Downloads and parses the PDF with docling, splits into chunks, 
-    generates embeddings with JINA, store the chunks in Opensearch,
-    and stores document metadata in PostgreSQL.
-
-    Requires x_api_key header.
-    """
+) -> IngestResponse:
     request_id = get_request_id()
     structlog.contextvars.bind_contextvars(request_id=request_id)
-    logger.info("ingest_request_received", url=request.url, title=request.title)
 
-    # Generate Document ID from URL.
     doc_id = f"doc_{uuid.uuid5(uuid.NAMESPACE_URL, request.url).hex[:12]}"
+    logger.info("ingest_request_received", url=request.url, title=request.title, doc_id=doc_id)
 
-    # step 1 - parse pdf with docling
-    try:
-        parsed = await parse_document_from_url(request.url)
-    except ValueError as e:
-        raise HTTPException(status_code = 422,detail= str(e))
-    
-    # step 2 - Chunk the text
-    chunks = chunk_text(
-        text = parsed.content,
-        doc_id = doc_id,
-        doc_type = request.doc_type.value,
-        source_url = request.url,
-    )
-
-    if not chunks:
-        raise HTTPException(
-            status_code=422,
-            detail = "Document produced no chunks - content may be empty."
-        )
-    
-    # step 3 - Generate embeddings for all chunks in one batch
-    chunk_texts = [chunk.text for chunk in chunks]
-    embeddings = await generate_embeddings(chunk_texts)
-
-    # step 4 - store chunks in PostgreSQL
-    chunk_dicts = [
-        {
-            "doc_id": chunk.doc_id,
-            "text": chunk.text,
-            "chunk_index": chunk.chunk_index,
-            "doc_type": chunk.doc_type,
-            "source_url": chunk.source_url,
-            "page_number": chunk.page_number,
-            "section_reference": chunk.section_reference,
-            "embedding": embeddings[i],
-        }
-        for i, chunk in enumerate(chunks)
-    ]
-    await chunk_repository.insert_chunks(db, chunk_dicts)
-
-    # step 5 - store document metadata in PostgreSQL
+    # Check for duplicate before queuing
     existing = await db.execute(
         select(DocumentRecord).where(DocumentRecord.id == doc_id)
-)
-    if existing.scalar_one_or_none() is None:
-        record = DocumentRecord(
-            id=doc_id,
-            title=request.title,
-            doc_type=request.doc_type.value,
-            source_url=request.url,
-            page_count=parsed.page_count,
-        )
-        db.add(record)
-    else:
+    )
+    if existing.scalar_one_or_none() is not None:
         logger.info("document_already_exists", doc_id=doc_id)
+        return IngestResponse(
+            doc_id=doc_id,
+            title=request.title,
+            page_count=0,
+            chunk_count=0,
+            message="Document already exists — skipping ingestion.",
+        )
 
-    logger.info(
-        "document_ingested",
+    # Queue background ingestion
+    background_tasks.add_task(
+        _run_ingestion,
         doc_id=doc_id,
-        chunk_count = len(chunks),
-        page_count = parsed.page_count,
+        request_url=request.url,
+        request_title=request.title,
+        doc_type_value=request.doc_type.value,
     )
 
     return IngestResponse(
-        doc_id = doc_id,
+        doc_id=doc_id,
         title=request.title,
-        page_count=parsed.page_count,
-        chunk_count=len(chunks),
-        message=f"Successfully ingested {len(chunks)} chunks from {parsed.page_count} pages",
+        page_count=0,
+        chunk_count=0,
+        message=f"Ingestion started for '{request.title}'. Document will be available shortly.",
     )
-
-
 @router.post("/upload", status_code=201, response_model=IngestResponse)
 async def ingest_document_upload(
     file: UploadFile = File(...),

@@ -64,7 +64,7 @@ All protected endpoints require `X-Api-Key` header.
 - uv
 - Azure OpenAI account with GPT-4o deployment
 - Jina AI account (free tier)
-- AWS OpenSearch Serverless
+- Postgres
 
  
 Install uv
