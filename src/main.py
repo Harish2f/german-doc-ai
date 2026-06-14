@@ -20,17 +20,32 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage Application Startup and shutdown.
-    
-    Lifespan replaces the depricated @app.on_event handlers.
-    Code before yield runs on startup and code after yield runs on shutdown.
-    """
-    logger.info(
-        "germandocai_starting",
-        environment= settings.environment,
-        version=settings.app_version,
-    )
+    logger.info("germandocai_starting", version=settings.app_version, environment=settings.environment)
     await init_db()
+    
+    # Warm up Docling models at startup to avoid first-request timeout
+    try:
+        from docling.document_converter import DocumentConverter
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.datamodel.base_models import InputFormat
+        from docling.document_converter import PdfFormatOption
+        
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = False
+        pipeline_options.do_table_structure = False
+        pipeline_options.generate_page_images = False
+        pipeline_options.generate_picture_images = False
+        
+        DocumentConverter(
+            allowed_formats=[InputFormat.PDF],
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+            }
+        )
+        logger.info("docling_models_warmed_up")
+    except Exception as e:
+        logger.warning("docling_warmup_failed", error=str(e))
+    
     yield
     logger.info("germandocai_stopping")
 
