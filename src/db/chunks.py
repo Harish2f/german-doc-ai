@@ -75,14 +75,8 @@ class ChunkRepository:
         sql = text(f"""
             WITH bm25 AS (
                 SELECT
-                    id,
-                    doc_id,
-                    chunk_text,
-                    chunk_index,
-                    doc_type,
-                    source_url,
-                    page_number,
-                    section_ref,
+                    id, doc_id, chunk_text, chunk_index, doc_type,
+                    source_url, page_number, section_ref,
                     ts_rank(fts_vector, plainto_tsquery('english', :query)) AS score,
                     ROW_NUMBER() OVER (ORDER BY ts_rank(fts_vector, plainto_tsquery('english', :query)) DESC) AS rank
                 FROM document_chunks
@@ -92,20 +86,14 @@ class ChunkRepository:
             ),
             semantic AS (
                 SELECT
-                    id,
-                    doc_id,
-                    chunk_text,
-                    chunk_index,
-                    doc_type,
-                    source_url,
-                    page_number,
-                    section_ref,
-                    1 - (embedding <=> :embedding::vector) AS score,
-                    ROW_NUMBER() OVER (ORDER BY embedding <=> :embedding::vector) AS rank
-                FROM document_chunks
-                WHERE embedding IS NOT NULL
-                {doc_type_filter}
-                LIMIT :limit
+                    id, doc_id, chunk_text, chunk_index, doc_type,
+                    source_url, page_number, section_ref,
+                    1 - (embedding <=> cast(:embedding as vector)) AS score,
+                    ROW_NUMBER() OVER (ORDER BY embedding <=> cast(:embedding as vector)) AS rank
+                    FROM document_chunks
+                    WHERE embedding IS NOT NULL
+                    {doc_type_filter}
+                    LIMIT :limit
             ),
             rrf AS (
                 SELECT
@@ -124,14 +112,14 @@ class ChunkRepository:
             )
             SELECT * FROM rrf
             ORDER BY rrf_score DESC
-            LIMIT :top_k
-        """)
+           LIMIT :top_k
+    """)
 
         result = await db.execute(
             sql,
             {
                 "query": query_text,
-                "embedding": query_embedding,
+                "embedding": str(query_embedding),
                 "limit": top_k * 2,
                 "top_k": top_k,
             }
