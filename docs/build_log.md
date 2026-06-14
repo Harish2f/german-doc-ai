@@ -236,3 +236,37 @@
 - Use managed identity or workload identity federation instead of long-lived AWS access keys inside Azure deployments.
 - Add distributed tracing correlation between Langfuse traces, application logs, and infrastructure metrics.
 - Introduce staged deployment environments (dev/staging/prod) with automated rollback support in CI/CD.
+
+## pgvector Migration & Sentence Aware chunking
+
+### What I built
+
+- Migrated the retrieval layer from AWS OpenSearch Serverless to pgvector on Neon PostgreSQL with hybrid BM25 + semantic retrieval using tsvector, pgvector embeddings, HNSW indexing, and Reciprocal Rank Fusion (RRF).
+- Integrated Docling into production Docker deployment including required Linux system libraries and startup warmup to reduce first-request latency.
+- Reworked chunking pipeline from fixed sliding windows to sentence-aware chunking using NLTK (300-word chunks with 2-sentence overlap) for better semantic continuity.
+- Added asynchronous PDF ingestion using FastAPI BackgroundTasks and built a multipart upload endpoint (POST /ingestion/upload) to avoid request timeouts on large documents.
+- Built a lightweight Gradio UI with ingestion, query, and audit-trail tabs and expanded automated coverage to 84 passing tests.
+
+### What I Learned
+
+- AWS OpenSearch Serverless pricing can become unexpectedly expensive because compute units stay active even during low traffic or idle periods.
+- pgvector on Neon is operationally simpler and architecturally cleaner for DSGVO-focused systems since both relational and vector data stay inside one EU-hosted database.
+- Sentence-aware chunking performs better for retrieval quality than naive fixed-size sliding windows, especially for regulatory PDFs with long contextual sections.
+- FastAPI BackgroundTasks is useful for lightweight async ingestion workflows, but it is still process-bound and not a true distributed job queue.
+- RAG evaluation metrics can regress after infrastructure migration even when architecture becomes cleaner, making systematic benchmarking essential.
+
+### What broke and how I fixed it
+
+- AWS OpenSearch Serverless SEARCH collections did not support KNN vector search → migrated to VectorSearch collections, then fully replaced the stack with pgvector after free-tier cost exhaustion.
+- Background ingestion initially failed with foreign key violations → fixed by ensuring document metadata records are inserted before chunk persistence.
+- CI pipeline failed with asyncio event loop issues → replaced asyncio.get_event_loop() usage with asyncio.run() for compatibility in isolated test environments.
+- NLTK punkt_tab downloads failed on macOS because of SSL certificate validation → fixed using certifi certificate configuration.
+- Azure Container Apps timed out during Docling cold ingestion → solved through startup warmup and asynchronous background ingestion execution.
+
+### What I would do differently
+
+- Start with pgvector from the beginning instead of introducing OpenSearch Serverless complexity and cost overhead.
+- Design ingestion as a proper async job architecture early using Redis/Celery or Azure Service Bus instead of relying on in-process background tasks.
+- Add ingestion status tracking endpoints and persistent job metadata for frontend polling and operational visibility.
+- Benchmark retrieval quality continuously during infrastructure migrations instead of evaluating only after major architectural changes.
+- Add automated retrieval quality regression tests alongside unit and integration tests to catch semantic search degradation earlier.
