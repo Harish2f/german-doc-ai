@@ -74,7 +74,8 @@ async def _run_ingestion(
                 }
                 for i, chunk in enumerate(chunks)
             ]
-            await chunk_repository.insert_chunks(db, chunk_dicts)
+
+            # INSERT DOCUMENT RECORD FIRST to satisfy FK constraint
             existing = await db.execute(
                 select(DocumentRecord).where(DocumentRecord.id == doc_id)
             )
@@ -86,9 +87,13 @@ async def _run_ingestion(
                     source_url=request_url,
                     page_count=parsed.page_count,
                 )
-                db.add(record)
+            db.add(record)
+            await db.flush()  # write to DB before inserting chunks
+
+            # THEN insert chunks
+            await chunk_repository.insert_chunks(db, chunk_dicts)
             await db.commit()
-            logger.info("background_ingestion_completed", doc_id=doc_id)
+            logger.info("background_ingestion_completed", doc_id=doc_id, chunk_count=len(chunks))
         except Exception as e:
             logger.error("background_ingestion_failed", doc_id=doc_id, error=str(e))
 
