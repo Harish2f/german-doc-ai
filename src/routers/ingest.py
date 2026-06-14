@@ -43,9 +43,15 @@ async def _run_ingestion(
     doc_type_value: str,
 ):
     """Background task for document ingestion."""
-    session_factory = get_session_factory()
+    from src.db.postgres import get_engine
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    engine = get_engine()
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
     async with session_factory() as db:
         try:
+            logger.info("background_ingestion_started", doc_id=doc_id, url=request_url)
             parsed = await parse_document_from_url(request_url)
             chunks = chunk_text(
                 text=parsed.content,
