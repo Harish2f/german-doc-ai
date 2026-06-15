@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-15T23:32:26.839188",
+  "timestamp": "2026-06-15T23:58:08.565998",
   "model": "gpt-4o",
   "embedding_model": "jina-v3",
   "doc_types": [
@@ -7,10 +7,10 @@
   ],
   "summary": {
     "questions_evaluated": 10,
-    "avg_faithfulness": 0.864,
+    "avg_faithfulness": 0.869,
     "avg_answer_relevancy": 0.708,
     "avg_context_precision": 0.74,
-    "overall_score": 0.771
+    "overall_score": 0.772
   },
   "results": [
     {
@@ -23,9 +23,9 @@
     },
     {
       "question": "How did BaFin address cyber risks in 2024 under DORA?",
-      "answer": "BaFin addressed cyber risks in 2024 under DORA by preparing intensively for the new tasks associated with the regulation, which became applicable on 17 January 2025. DORA establishes stricter requirem",
+      "answer": "BaFin addressed cyber risks in 2024 under DORA by preparing intensively for the new tasks it would face with the regulation, which became applicable on 17 January 2025. DORA establishes stricter requi",
       "chunks_retrieved": 5,
-      "faithfulness": 0.857,
+      "faithfulness": 0.833,
       "answer_relevancy": 0.714,
       "context_precision": 1.0
     },
@@ -63,9 +63,9 @@
     },
     {
       "question": "What enforcement actions did BaFin impose in the banking sector in 2024?",
-      "answer": "In 2024, BaFin imposed the following enforcement actions in the banking sector:\n\n1. **Supervisory Measures**: BaFin took 768 measures in the banking sector, which included actions under the Banking Ac",
+      "answer": "In 2024, BaFin imposed the following enforcement actions in the banking sector:\n\n1. **Measures Taken**: BaFin took 768 measures in the banking sector, which included supervisory objections and measure",
       "chunks_retrieved": 5,
-      "faithfulness": 0.857,
+      "faithfulness": 1.0,
       "answer_relevancy": 0.714,
       "context_precision": 0.8
     },
@@ -73,7 +73,7 @@
       "question": "How did BaFin supervise ESG disclosures under SFDR?",
       "answer": "BaFin supervised ESG disclosures under the Sustainable Finance Disclosure Regulation (SFDR) by conducting reviews of the implementation of the regulation. In 2024, BaFin found that the information pub",
       "chunks_retrieved": 5,
-      "faithfulness": 0.857,
+      "faithfulness": 0.875,
       "answer_relevancy": 0.667,
       "context_precision": 0.2
     },
@@ -87,9 +87,9 @@
     },
     {
       "question": "How did BaFin prepare for Digital Operational Resilience Act implementation?",
-      "answer": "BaFin prepared intensively for the implementation of the Digital Operational Resilience Act (DORA) throughout 2024. Key preparation activities included:\n\n1. **Collaboration on Regulatory Frameworks**:",
+      "answer": "BaFin undertook extensive preparations for the implementation of the Digital Operational Resilience Act (DORA) in 2024. These preparations included:\n\n1. **Collaboration and Regulatory Development**: B",
       "chunks_retrieved": 5,
-      "faithfulness": 1.0,
+      "faithfulness": 0.909,
       "answer_relevancy": 0.714,
       "context_precision": 0.6
     }
