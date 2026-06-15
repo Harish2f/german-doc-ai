@@ -244,6 +244,7 @@
 - Migrated the retrieval layer from AWS OpenSearch Serverless to pgvector on Neon PostgreSQL with hybrid BM25 + semantic retrieval using tsvector, pgvector embeddings, HNSW indexing, and Reciprocal Rank Fusion (RRF).
 - Integrated Docling into production Docker deployment including required Linux system libraries and startup warmup to reduce first-request latency.
 - Reworked chunking pipeline from fixed sliding windows to sentence-aware chunking using NLTK (300-word chunks with 2-sentence overlap) for better semantic continuity.
+- Integrated Cohere reranker encoder model to rank chunks before LLM generation, improving overall RAGAS score from 0.604 in baseline to 0.772 
 - Added asynchronous PDF ingestion using FastAPI BackgroundTasks and built a multipart upload endpoint (POST /ingestion/upload) to avoid request timeouts on large documents.
 - Built a lightweight Gradio UI with ingestion, query, and audit-trail tabs and expanded automated coverage to 84 passing tests.
 

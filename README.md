@@ -47,10 +47,10 @@ RAGAS evaluation on BaFin Annual Report 2024 (10 questions):
 
 | Metric | Score |
 |---|---|
-| Faithfulness | 0.864 |
+| Faithfulness | 0.869 |
 | Answer Relevancy | 0.708 |
 | Context Precision | 0.740 |
-| Overall | 0.771 |
+| Overall | 0.772 |
 
 Run evaluation: `uv run python scripts/evaluate_ragas.py`
 
@@ -79,6 +79,7 @@ All protected endpoints require `X-Api-Key` header.
 - Azure OpenAI account with GPT-4o deployment
 - Jina AI account (free tier)
 - Neon Postgres
+- Cohere (free tier)
 - LangFuse Account (optional)
 
  
