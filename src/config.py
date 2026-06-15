@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     # JINA API
     jina_api_key:str= Field(default="", description="JINA Embeddings API Key")
 
+    # Cohere API
+    cohere_api_key: str = Field(default="", description="Cohere API key for reranking")
+
 def get_settings() -> Settings:
     """ Factory function(creates an Object and returns it) to isolate settings for different environments """
     return Settings()
