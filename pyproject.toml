@@ -30,6 +30,7 @@ dependencies = [
     "gradio>=6.15.1",
     "pgvector>=0.4.2",
     "nltk>=3.9.4",
+    "cohere>=7.0.4",
 ]
 
 [dependency-groups]

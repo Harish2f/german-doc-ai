@@ -13,8 +13,8 @@ DSGVO compliant architecture and deployed on Azure.
 - LangGraph agent with guardrail, document grading, query rewriting
 - DSGVO compliance layer with audit logging on every query
 - Persistent chat history with session management
-- DSGVO Right to erasure with complete user data deletion across PostgreSQL and OpenSearch
-- Deployed on Azure Container Apps (West Europe region)
+- DSGVO Right to erasure with complete user data deletion from PostgreSQL (chunks cascade-delete via FK constraint)
+- Deployed on Azure Container Apps (Germany West Central)
 
 ## Live Demo
 https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/docs
@@ -33,6 +33,7 @@ https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/
 | Search | pgvector (hybrid BM25 + semantic) |
 | Database | Neon PostgreSQL (EU Central) |
 | Agent | LangGraph |
+| Re-ranker | Cohere |
 | Observability | Langfuse |
 | Deployment | Azure Container Apps(Germany West Central) |
 | Container Registry | Azure Container Registry |
@@ -46,10 +47,10 @@ RAGAS evaluation on BaFin Annual Report 2024 (10 questions):
 
 | Metric | Score |
 |---|---|
-| Faithfulness | 0.696 |
-| Answer Relevancy | 0.608 |
-| Context Precision | 0.500 |
-| Overall | 0.651 |
+| Faithfulness | 0.864 |
+| Answer Relevancy | 0.708 |
+| Context Precision | 0.740 |
+| Overall | 0.771 |
 
 Run evaluation: `uv run python scripts/evaluate_ragas.py`
 
@@ -78,6 +79,7 @@ All protected endpoints require `X-Api-Key` header.
 - Azure OpenAI account with GPT-4o deployment
 - Jina AI account (free tier)
 - Neon Postgres
+- LangFuse Account (optional)
 
  
 Install uv

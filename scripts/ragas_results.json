@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-14T19:26:45.080704",
+  "timestamp": "2026-06-15T23:32:26.839188",
   "model": "gpt-4o",
   "embedding_model": "jina-v3",
   "doc_types": [
@@ -7,91 +7,91 @@
   ],
   "summary": {
     "questions_evaluated": 10,
-    "avg_faithfulness": 0.696,
-    "avg_answer_relevancy": 0.608,
-    "avg_context_precision": 0.5,
-    "overall_score": 0.602
+    "avg_faithfulness": 0.864,
+    "avg_answer_relevancy": 0.708,
+    "avg_context_precision": 0.74,
+    "overall_score": 0.771
   },
   "results": [
     {
       "question": "What were the primary supervisory risks identified by BaFin in 2024?",
-      "answer": "The primary supervisory risks identified by BaFin in 2024 were:\n\n1. **Risks arising from corrections on the real estate markets** (Source 2, doc_0eb54f2fcb9e).\n2. **Risks arising from significant corr",
+      "answer": "The primary supervisory risks identified by BaFin in 2024 were:\n\n1. **Risks arising from corrections on the real estate markets**: The commercial real estate market in Germany remained strained, with ",
       "chunks_retrieved": 5,
-      "faithfulness": 0.889,
-      "answer_relevancy": 0.857,
-      "context_precision": 0.6
-    },
-    {
-      "question": "How did BaFin address cyber risks in 2024 under DORA?",
-      "answer": "BaFin addressed cyber risks in 2024 under DORA through several measures aimed at enhancing the cyber resilience of financial institutions. Specifically:\n\n1. **Implementation Work for DORA**: BaFin car",
-      "chunks_retrieved": 5,
-      "faithfulness": 1.0,
+      "faithfulness": 0.667,
       "answer_relevancy": 0.857,
       "context_precision": 1.0
     },
     {
-      "question": "What are the key implications of MiCAR for cryptoasset service providers?",
-      "answer": "The key implications of MiCAR (Regulation (EU) 2023/1114) for crypto-asset service providers are as follows:\n\n1. **Harmonised European Regulatory Framework**: MiCAR establishes a unified regulatory fr",
+      "question": "How did BaFin address cyber risks in 2024 under DORA?",
+      "answer": "BaFin addressed cyber risks in 2024 under DORA by preparing intensively for the new tasks associated with the regulation, which became applicable on 17 January 2025. DORA establishes stricter requirem",
       "chunks_retrieved": 5,
-      "faithfulness": 0.875,
+      "faithfulness": 0.857,
+      "answer_relevancy": 0.714,
+      "context_precision": 1.0
+    },
+    {
+      "question": "What are the key implications of MiCAR for cryptoasset service providers?",
+      "answer": "The key implications of MiCAR (Regulation (EU) 2023/1114) for crypto-asset service providers include:\n\n1. **Supervisory Responsibility**: BaFin has been responsible for supervising crypto-asset servic",
+      "chunks_retrieved": 5,
+      "faithfulness": 0.889,
       "answer_relevancy": 0.667,
-      "context_precision": 0.4
+      "context_precision": 0.6
     },
     {
       "question": "How did BaFin use AI systems to detect market manipulation?",
-      "answer": "BaFin used AI systems, specifically within the ALMA (Automated Alarm and Market Analysis System) project, to detect market manipulation. In May 2024, BaFin integrated a machine learning algorithm into",
+      "answer": "BaFin used AI systems, specifically within the ALMA (Automated Alarm and Market Analysis System) project, to detect market manipulation. In May 2024, BaFin added a machine learning algorithm to ALMA t",
       "chunks_retrieved": 5,
       "faithfulness": 0.8,
       "answer_relevancy": 0.571,
-      "context_precision": 0.2
-    },
-    {
-      "question": "What measures did BaFin take against money laundering in 2024?",
-      "answer": "BaFin ergriff im Jahr 2024 mehrere Ma\u00dfnahmen zur Bek\u00e4mpfung von Geldw\u00e4sche. Dazu geh\u00f6rten:\n\n1. **Intensivierte pr\u00e4ventive Aufsicht**: BaFin f\u00fchrte routinem\u00e4\u00dfige und ad-hoc-Sonderpr\u00fcfungen sowohl im Ba",
-      "chunks_retrieved": 5,
-      "faithfulness": 0.143,
-      "answer_relevancy": 0.143,
-      "context_precision": 0.6
-    },
-    {
-      "question": "How did BaFin assess risks from commercial real estate corrections?",
-      "answer": "BaFin assessed risks from corrections in the commercial real estate market as significant, particularly due to the strained situation in the German commercial real estate sector in 2024. This market s",
-      "chunks_retrieved": 5,
-      "faithfulness": 0.857,
-      "answer_relevancy": 0.75,
-      "context_precision": 0.6
-    },
-    {
-      "question": "What enforcement actions did BaFin impose in the banking sector in 2024?",
-      "answer": "BaFin imposed various enforcement actions in the banking sector in 2024. These included measures under sections 45, 45b, and 46 of the Banking Act, which address improving own funds and liquidity, org",
-      "chunks_retrieved": 5,
-      "faithfulness": 0.833,
-      "answer_relevancy": 0.714,
       "context_precision": 0.4
     },
     {
-      "question": "How did BaFin supervise ESG disclosures under SFDR?",
-      "answer": "BaFin supervised ESG disclosures under the EU Sustainable Finance Disclosure Regulation (SFDR) by collecting a non-representative sample in 2024. This sample revealed that financial market participant",
+      "question": "What measures did BaFin take against money laundering in 2024?",
+      "answer": "In 2024, BaFin took several measures against money laundering:\n\n1. **Identification of Shortcomings and Issuance of Measures**: BaFin identified shortcomings in institutions' money laundering preventi",
       "chunks_retrieved": 5,
-      "faithfulness": 0.833,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.714,
+      "context_precision": 1.0
+    },
+    {
+      "question": "How did BaFin assess risks from commercial real estate corrections?",
+      "answer": "BaFin assessed risks from commercial real estate corrections as significant, particularly due to the strained situation in the German commercial real estate market in 2024. This market was strongly af",
+      "chunks_retrieved": 5,
+      "faithfulness": 0.857,
+      "answer_relevancy": 0.75,
+      "context_precision": 0.8
+    },
+    {
+      "question": "What enforcement actions did BaFin impose in the banking sector in 2024?",
+      "answer": "In 2024, BaFin imposed the following enforcement actions in the banking sector:\n\n1. **Supervisory Measures**: BaFin took 768 measures in the banking sector, which included actions under the Banking Ac",
+      "chunks_retrieved": 5,
+      "faithfulness": 0.857,
+      "answer_relevancy": 0.714,
+      "context_precision": 0.8
+    },
+    {
+      "question": "How did BaFin supervise ESG disclosures under SFDR?",
+      "answer": "BaFin supervised ESG disclosures under the Sustainable Finance Disclosure Regulation (SFDR) by conducting reviews of the implementation of the regulation. In 2024, BaFin found that the information pub",
+      "chunks_retrieved": 5,
+      "faithfulness": 0.857,
       "answer_relevancy": 0.667,
       "context_precision": 0.2
     },
     {
       "question": "What role did geopolitical tensions play in BaFin supervisory priorities?",
-      "answer": "Geopolitische Spannungen spielten eine bedeutende Rolle in den Aufsichtspriorit\u00e4ten der BaFin im Jahr 2024. BaFin analysierte die Risiken, die sich f\u00fcr deutsche Unternehmen und Banken aus geopolitisch",
+      "answer": "Geopolitical tensions played a significant role in BaFin's supervisory priorities in 2024. BaFin analyzed the risks arising from geopolitical events and their impact on German companies and banks. It ",
       "chunks_retrieved": 5,
-      "faithfulness": 0.0,
-      "answer_relevancy": 0.143,
-      "context_precision": 0.6
+      "faithfulness": 0.857,
+      "answer_relevancy": 0.714,
+      "context_precision": 1.0
     },
     {
       "question": "How did BaFin prepare for Digital Operational Resilience Act implementation?",
-      "answer": "BaFin prepared extensively for the implementation of the Digital Operational Resilience Act (DORA) throughout 2024. Key measures included:\n\n1. **Collaboration and Rule Development**: BaFin played a si",
+      "answer": "BaFin prepared intensively for the implementation of the Digital Operational Resilience Act (DORA) throughout 2024. Key preparation activities included:\n\n1. **Collaboration on Regulatory Frameworks**:",
       "chunks_retrieved": 5,
-      "faithfulness": 0.733,
+      "faithfulness": 1.0,
       "answer_relevancy": 0.714,
-      "context_precision": 0.4
+      "context_precision": 0.6
     }
   ]
 }
