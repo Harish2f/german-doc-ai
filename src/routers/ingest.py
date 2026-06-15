@@ -87,8 +87,8 @@ async def _run_ingestion(
                     source_url=request_url,
                     page_count=parsed.page_count,
                 )
-            db.add(record)
-            await db.flush()  # write to DB before inserting chunks
+                db.add(record)
+                await db.flush()  # write to DB before inserting chunks
 
             # THEN insert chunks
             await chunk_repository.insert_chunks(db, chunk_dicts)
@@ -141,22 +141,83 @@ async def ingest_document(
         chunk_count=0,
         message=f"Ingestion started for '{request.title}'. Document will be available shortly.",
     )
-@router.post("/upload", status_code=201, response_model=IngestResponse)
+
+
+async def _run_ingestion_from_bytes(
+    doc_id: str,
+    file_bytes: bytes,
+    filename: str,
+    request_title: str,
+    doc_type_value: str,
+):
+    """Background task for file upload ingestion."""
+    from src.db.postgres import get_engine
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+    from src.ingestion.docling_parser import parse_document_from_bytes
+
+    engine = get_engine()
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with session_factory() as db:
+        try:
+            logger.info("background_upload_started", doc_id=doc_id, filename=filename)
+            parsed = await parse_document_from_bytes(
+                file_bytes=file_bytes,
+                filename=filename,
+                source_url=filename,
+            )
+            chunks = chunk_text(
+                text=parsed.content,
+                doc_id=doc_id,
+                doc_type=doc_type_value,
+                source_url=filename,
+            )
+            chunk_texts_list = [chunk.text for chunk in chunks]
+            embeddings = await generate_embeddings(chunk_texts_list)
+            chunk_dicts = [
+                {
+                    "doc_id": chunk.doc_id,
+                    "text": chunk.text,
+                    "chunk_index": chunk.chunk_index,
+                    "doc_type": chunk.doc_type,
+                    "source_url": chunk.source_url,
+                    "page_number": chunk.page_number,
+                    "section_reference": chunk.section_reference,
+                    "embedding": embeddings[i],
+                }
+                for i, chunk in enumerate(chunks)
+            ]
+
+            existing = await db.execute(
+                select(DocumentRecord).where(DocumentRecord.id == doc_id)
+            )
+            if existing.scalar_one_or_none() is None:
+                record = DocumentRecord(
+                    id=doc_id,
+                    title=request_title,
+                    doc_type=doc_type_value,
+                    source_url=filename,
+                    page_count=parsed.page_count,
+                )
+                db.add(record)
+                await db.flush()
+
+            await chunk_repository.insert_chunks(db, chunk_dicts)
+            await db.commit()
+            logger.info("background_upload_completed", doc_id=doc_id, chunk_count=len(chunks))
+        except Exception as e:
+            logger.error("background_upload_failed", doc_id=doc_id, error=str(e))
+
+
+@router.post("/upload", status_code=202, response_model=IngestResponse)
 async def ingest_document_upload(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     doc_type: DocumentType = Form(...),
     api_key: str = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> IngestResponse:
-    """Ingest a PDF document from file upload.
-    
-    Accepts multipart form data with a PDF file.
-    Uses Docling for parsing with pypdf fallback.
-    Requires x_api_key header.
-    """
-    from src.ingestion.docling_parser import parse_document_from_bytes
-
     request_id = get_request_id()
     structlog.contextvars.bind_contextvars(request_id=request_id)
     logger.info("ingest_upload_received", filename=file.filename, title=title)
@@ -167,70 +228,77 @@ async def ingest_document_upload(
     file_bytes = await file.read()
     doc_id = f"doc_{uuid.uuid5(uuid.NAMESPACE_URL, file.filename + title).hex[:12]}"
 
-    try:
-        parsed = await parse_document_from_bytes(
-            file_bytes=file_bytes,
-            filename=file.filename,
-            source_url=file.filename,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-
-    chunks = chunk_text(
-        text=parsed.content,
-        doc_id=doc_id,
-        doc_type=doc_type.value,
-        source_url=file.filename,
-    )
-
-    if not chunks:
-        raise HTTPException(status_code=422, detail="Document produced no chunks.")
-
-    chunk_texts = [chunk.text for chunk in chunks]
-    embeddings = await generate_embeddings(chunk_texts)
-
-    # step 4 - store chunks in PostgreSQL
-    chunk_dicts = [
-        {
-            "doc_id": chunk.doc_id,
-            "text": chunk.text,
-            "chunk_index": chunk.chunk_index,
-            "doc_type": chunk.doc_type,
-            "source_url": chunk.source_url,
-            "page_number": chunk.page_number,
-            "section_reference": chunk.section_reference,
-            "embedding": embeddings[i],
-        }
-        for i, chunk in enumerate(chunks)
-    ]
-    await chunk_repository.insert_chunks(db, chunk_dicts)
-
     existing = await db.execute(
         select(DocumentRecord).where(DocumentRecord.id == doc_id)
     )
-    if existing.scalar_one_or_none() is None:
-        record = DocumentRecord(
-            id=doc_id,
+    if existing.scalar_one_or_none() is not None:
+        return IngestResponse(
+            doc_id=doc_id,
             title=title,
-            doc_type=doc_type.value,
-            source_url=file.filename,
-            page_count=parsed.page_count,
+            page_count=0,
+            chunk_count=0,
+            message="Document already exists — skipping ingestion.",
         )
-        db.add(record)
-    else:
-        logger.info("document_already_exists", doc_id=doc_id)
 
-    logger.info(
-        "document_uploaded_ingested",
+    background_tasks.add_task(
+        _run_ingestion_from_bytes,
         doc_id=doc_id,
-        chunk_count=len(chunks),
-        page_count=parsed.page_count,
+        file_bytes=file_bytes,
+        filename=file.filename,
+        request_title=title,
+        doc_type_value=doc_type.value,
     )
 
     return IngestResponse(
         doc_id=doc_id,
         title=title,
-        page_count=parsed.page_count,
-        chunk_count=len(chunks),
-        message=f"Successfully ingested {len(chunks)} chunks from {parsed.page_count} pages",
+        page_count=0,
+        chunk_count=0,
+        message=f"Upload received for '{title}'. Document will be available shortly.",
     )
+
+
+@router.get("/{doc_id}/status")
+async def get_ingestion_status(
+    doc_id: str,
+    api_key: str = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Check if a document has been fully ingested and is ready to query."""
+    from sqlalchemy import text as sql_text
+
+    existing = await db.execute(
+        select(DocumentRecord).where(DocumentRecord.id == doc_id)
+    )
+    doc = existing.scalar_one_or_none()
+
+    if doc is None:
+        return {
+            "doc_id": doc_id,
+            "status": "processing",
+            "message": "Document is being processed. Please wait.",
+            "chunk_count": 0,
+        }
+
+    result = await db.execute(
+        sql_text("SELECT COUNT(*) FROM document_chunks WHERE doc_id = :doc_id"),
+        {"doc_id": doc_id}
+    )
+    chunk_count = result.scalar()
+
+    if chunk_count == 0:
+        return {
+            "doc_id": doc_id,
+            "status": "processing",
+            "message": "Document record created. Chunks being indexed.",
+            "chunk_count": 0,
+        }
+
+    return {
+        "doc_id": doc_id,
+        "status": "ready",
+        "message": f"Document ready. {chunk_count} chunks indexed.",
+        "chunk_count": chunk_count,
+        "title": doc.title,
+        "doc_type": doc.doc_type,
+    }

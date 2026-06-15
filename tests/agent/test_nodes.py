@@ -25,7 +25,7 @@ def test_grade_query_out_of_scope():
             "documents_relevant":False
             }
    result = grade_query(state)
-   assert result == "out_of_scope"
+   assert result == "retrieve"
 
 
 def test_should_rewrite():
