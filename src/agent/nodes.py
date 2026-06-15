@@ -46,15 +46,16 @@ async def grade_documents(state: AgentState) -> dict:
     client = get_azure_openai_client()
     settings = get_settings()
 
-    grading_prompt = f"""You are grading whether retrieved documents are relevant to a question.
+    grading_prompt = f"""You are grading whether retrieved documents contain ANY information useful for answering a question about German financial regulation.
 
-Question: {query}
+    Question: {query}
 
-Retrieved chunks:
-{chr(10).join([f"Chunk {i+1}: {chunk['text'][:300]}" for i, chunk in enumerate(chunks)])}
+    Retrieved chunks:
+    {chr(10).join([f"Chunk {i+1}: {chunk['text'][:300]}" for i, chunk in enumerate(chunks)])}
 
-Are these chunks relevant to answering the question?
-Respond with JSON only: {{"relevant": true}} or {{"relevant": false}}"""
+    Do these chunks contain ANY relevant information that could help answer the question, even partially?
+    Be generous — if chunks are from the same domain (BaFin, financial regulation, compliance), mark as relevant.
+    Respond with JSON only: {{"relevant": true}} or {{"relevant": false}}"""
 
     response = await client.chat.completions.create(
         model=settings.azure_openai_deployment,
@@ -149,29 +150,21 @@ async def generate(state: AgentState) -> dict:
 
 
 def grade_query(state: AgentState) -> str:
-    """Decide if the query is answerable with our document corpus.
-    
-    This is a conditional edge function — returns a string
-    that LangGraph uses to route to the next node.
-    
-    Returns:
-        'retrieve' if query is answerable, 'out_of_scope' otherwise.
-    """
     query = state["query"].lower()
 
-    regulatory_keywords = [
-        "bafin", "regulation", "requirement", "compliance", "dsgvo", "gdpr",
-        "eu ai act", "mifid", "dora", "mitar", "micar", "banking", "financial",
-        "risk", "audit", "supervisory", "regulatory", "directive", "artikel",
-        "verordnung", "gesetz", "vorschrift", "datenschutz",
+    # Clearly out of scope — non-regulatory topics
+    out_of_scope_keywords = [
+        "weather", "sports", "recipe", "movie", "music", "game",
+        "celebrity", "fashion", "travel", "cooking",
     ]
+    
+    if any(keyword in query for keyword in out_of_scope_keywords):
+        logger.warning("agent_query_out_of_scope", query=query)
+        return "out_of_scope"
 
-    if any(keyword in query for keyword in regulatory_keywords):
-        logger.info("agent_query_in_scope", query=query)
-        return "retrieve"
-
-    logger.warning("agent_query_out_of_scope", query=query)
-    return "out_of_scope"
+    # Default to retrieve — let document grading decide relevance
+    logger.info("agent_query_in_scope", query=query)
+    return "retrieve"
 
 
 def should_rewrite(state: AgentState) -> str:

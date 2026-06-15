@@ -2,12 +2,11 @@ import os
 import gradio as gr
 import httpx
 
-BASE_URL = os.getenv("GERMANDOCAI_URL", "https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io")
+BASE_URL = os.getenv("GERMANDOCAI_URL", "http://localhost:8000")
 API_KEY = os.getenv("GERMANDOCAI_API_KEY", "dev-secret-key")
 HEADERS = {"x-api-key": API_KEY}
 
 DOC_TYPES = ["bafin", "eu_ai_act", "dsgvo", "other"]
-
 
 # ── Ingestion ────────────────────────────────────────────────
 
@@ -45,6 +44,26 @@ def ingest_file(file, title: str, doc_type: str) -> str:
         if response.status_code in (200, 201, 202):
             return f"✅ {data['message']}\nDoc ID: {data['doc_id']}"
         return f"❌ Error: {data.get('detail', 'Unknown error')}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+    
+
+def check_status(doc_id: str) -> str:
+    if not doc_id:
+        return "Please enter a Doc ID."
+    try:
+        response = httpx.get(
+            f"{BASE_URL}/ingestion/{doc_id}/status",
+            headers=HEADERS,
+            timeout=10,
+        )
+        data = response.json()
+        status = data.get("status", "unknown")
+        message = data.get("message", "")
+        chunk_count = data.get("chunk_count", 0)
+        if status == "ready":
+            return f"✅ {message}"
+        return f"⏳ {message} (chunks indexed so far: {chunk_count})"
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
@@ -110,7 +129,7 @@ def get_audit_trail(user_id: str) -> str:
 
 # ── UI ───────────────────────────────────────────────────────
 
-with gr.Blocks(title="GermanDocAI", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="GermanDocAI") as demo:
     gr.Markdown("""
     # 🇩🇪 GermanDocAI
     **Regulatory document intelligence for German compliance frameworks**
@@ -136,6 +155,13 @@ with gr.Blocks(title="GermanDocAI", theme=gr.themes.Soft()) as demo:
         file_btn = gr.Button("Upload and Ingest", variant="primary")
         file_output = gr.Textbox(label="Result", interactive=False)
         file_btn.click(ingest_file, inputs=[file_input, file_title, file_doc_type], outputs=file_output)
+
+        gr.Markdown("---\n### Check Ingestion Status")
+        with gr.Row():
+            status_doc_id = gr.Textbox(label="Doc ID", placeholder="doc_abc123...")
+        status_btn = gr.Button("Check Status")
+        status_output = gr.Textbox(label="Status", interactive=False)
+        status_btn.click(check_status, inputs=[status_doc_id], outputs=status_output)
 
     with gr.Tab("💬 Ask Questions"):
         with gr.Row():
