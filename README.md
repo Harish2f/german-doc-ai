@@ -17,7 +17,7 @@ DSGVO compliant architecture and deployed on Azure.
 - Deployed on Azure Container Apps (Germany West Central)
 
 ## Live Demo
-https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/docs
+https://germandocai.lemonpond-bd30645e.germanywestcentral.azurecontainerapps.io/ui
 
 ## Architecture
 
